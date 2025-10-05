@@ -5,7 +5,7 @@ It uses a public dataset from Kaggle (“bank loan modelling”) and applies a f
 
 ## 1. Dataset
 The data comes directly from
-[text](https://www.kaggle.com/datasets/itsmesunil/bank-loan-modelling)
+[Kaggle bank-loan-modelling](https://www.kaggle.com/datasets/itsmesunil/bank-loan-modelling)
 
 After downloading, the notebook keeps one random sample of 50 rows as a small “new applications” test set (`aliquota_test.csv`) and uses the rest for training.
 
@@ -48,4 +48,4 @@ Install them with:
 - The “aliquota” sample simulates new incoming applications to test the model later.
 
 ## 6. Further info
-[video](https://youtu.be/Vo8G3O53-10)
+[You tube video](https://youtu.be/Vo8G3O53-10)
