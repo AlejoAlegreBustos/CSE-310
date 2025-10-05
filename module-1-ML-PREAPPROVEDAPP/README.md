@@ -48,4 +48,4 @@ Install them with:
 - The “aliquota” sample simulates new incoming applications to test the model later.
 
 ## 6. Further info
-[text](https://www.kaggle.com/datasets/itsmesunil/bank-loan-modelling)
+[video](https://youtu.be/Vo8G3O53-10)
