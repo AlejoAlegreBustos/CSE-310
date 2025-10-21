@@ -1,11 +1,10 @@
-# Module #<!-- Insert Module Number --> Report | CSE 310 – Applied Programming
+# Module #2 Report | CSE 310 – Applied Programming
 
-|Name|Date|Teacher|
-|-|-|-|
-| | | Bro McGary |
+|Alejo Alegre Bustos|10/20/2025|Teacher:Mcgary|
+
 
 ### Project Repository Link
-Copy the link to your [Github Repository](<!-- Insert Link Here -->)
+[Github Repository](https://github.com/AlejoAlegreBustos/CSE-310/tree/main/personal-project/module-2-interface)
 
 ### Module
 Mark an **X** next to the module you completed
@@ -18,7 +17,7 @@ Mark an **X** next to the module you completed
 |GIS Mapping              | | Erlang                   | |
 |Mobile App               | | JavaScript               | |
 |Networking               | | C#                       | |
-|Web Apps                 | | TypeScript               | |
+|Web Apps                 |x| Dart                     |X|
 |Language – C++           | | Rust                     | |
 |SQL Relational Databases | |Choose Your Own Adventure | |
 
@@ -27,12 +26,12 @@ Complete the following checklist to make sure you completed all parts of the mod
 
 |Question                                                                                         |Your Response|Comments|
 |--------------------------------------------------------------------------------------------------------------------|-|-|
-|Did you implement the entire set of unique requirements as described in the Module Description document in I-Learn? | | |
-|Did you write at least 100 lines of code in your software and include useful comments?                              | | |
-|Did you use the correct README.md template from the Module Description document in I-Learn?                         | | |
-|Did you completely populate the README.md template?                                                                 | | |
-|Did you create the video, publish it on YouTube, and reference it in the README.md file?                            | | |
-|Did you publish the code with the README.md (in the top-level folder) into a public GitHub repository?              | | |
+|Did you implement the entire set of unique requirements as described in the Module Description document in I-Learn? |y| |
+|Did you write at least 100 lines of code in your software and include useful comments?                              |y| |
+|Did you use the correct README.md template from the Module Description document in I-Learn?                         |y| |
+|Did you completely populate the README.md template?                                                                 |y| |
+|Did you create the video, publish it on YouTube, and reference it in the README.md file?                            |y| |
+|Did you publish the code with the README.md (in the top-level folder) into a public GitHub repository?              |y| |
  
 
 ### Did you complete a Stretch Challenge 
@@ -45,16 +44,21 @@ How many hours did you spend on this module and the team project this Sprint?
 
 |              |Hours|
 |------------------|-|
-|Individual Module | |
-|Team Project      | |
+|Individual Module |5|
+|Team Project      |3|
 
 ### Retrospective
 - What learning strategies worked well in this module?
-  <!-- Response Here -->
-- What strategies (or lack of strategy) did not work well?
-  <!-- Response Here -->
-- How can you improve in the next module?
-  <!-- Response Here -->
+  
+  It was good to review how classes work first, it help me to understand quickly how flutter works
 
+- What strategies (or lack of strategy) did not work well?
+  aws going down
+
+- How can you improve in the next module?
+  
+  I am going to start building more screens for the web and also some functions, so it would be better to start earlier than this time
+
+[video description](https://youtu.be/F1gsEJvAh1k)
 
 <!-- Create this Markdown to a PDF and submit it. In visual studio code you can convert this to a pdf with any one of the extensions. -->
