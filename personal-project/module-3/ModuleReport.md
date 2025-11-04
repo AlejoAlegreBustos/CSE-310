@@ -1,11 +1,11 @@
-# Module #<!-- Insert Module Number --> Report | CSE 310 – Applied Programming
+# Module #3 Report | CSE 310 – Applied Programming
 
-|Name|Date|Teacher|
+|Alejo Alegre Bustos|11/03/2025|Bro. McGary|
 |-|-|-|
 | | | Bro McGary |
 
 ### Project Repository Link
-Copy the link to your [Github Repository](<!-- Insert Link Here -->)
+[Github Repository](https://github.com/AlejoAlegreBustos/CSE-310/tree/main/personal-project/module-3)
 
 ### Module
 Mark an **X** next to the module you completed
