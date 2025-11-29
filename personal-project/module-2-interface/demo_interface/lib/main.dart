@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/user_provider.dart';
-import 'home_page.dart';
-import 'form.dart';
+import 'providers/login_provider.dart';
+import 'login.dart';
 
-void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => UserProvider(),
-      child: const MyApp(),
-    ),
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://vhhusfbogsjknjsahfyy.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMDA1NDYsImV4cCI6MjA3Nzc3NjU0Nn0.J2GOSGKevlnJD5qNKdwOABoKyjIiDpRpPKE3TH_dEZI',
   );
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -18,14 +22,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Welcome App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomePage(),
-      routes: {
-        '/second': (context) => const SecondPage(),
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LoginProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: const LoginPage(),
+      ),
     );
   }
 }

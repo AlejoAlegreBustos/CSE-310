@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/countries.dart';
 
 class StartupFormProvider extends ChangeNotifier {
+  final String userId;
+
+  StartupFormProvider({required this.userId});
+
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   // Controllers principales
@@ -104,8 +108,9 @@ class StartupFormProvider extends ChangeNotifier {
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         validator: (value) {
           if (value == null || value.isEmpty) return 'Please enter $label';
-          if (isNumber && int.tryParse(value) == null)
+          if (isNumber && int.tryParse(value) == null) {
             return 'Enter a valid number';
+          }
           return null;
         },
       ),
@@ -217,6 +222,9 @@ class StartupFormProvider extends ChangeNotifier {
         (s == null || s.isEmpty) ? null : double.tryParse(s);
     final Map<String, dynamic> record = {};
 
+    // Añadimos userId al record
+    record['user_id'] = userId;
+
     record['founded_year'] = tryParseInt(foundedYearController.text);
     record['funding_amount_usd'] = tryParseDouble(
       fundingAmountUsdController.text,
@@ -230,7 +238,6 @@ class StartupFormProvider extends ChangeNotifier {
     );
     record['co_investors_count'] = tryParseInt(coInvestorsCountController.text);
 
-    
     record['exit_type_No Exit'] = exited ? 0 : 1;
 
     if (fundingDate != null) {
@@ -242,7 +249,9 @@ class StartupFormProvider extends ChangeNotifier {
       record['funding_date_quarter'] = ((d.month - 1) ~/ 3) + 1;
     }
 
-    for (final k in tags.keys) record[k] = (tags[k] ?? false) ? 1 : 0;
+    for (final k in tags.keys) {
+      record[k] = (tags[k] ?? false) ? 1 : 0;
+    }
 
     record.addAll(
       oneHotEncode(
@@ -332,7 +341,9 @@ class StartupFormProvider extends ChangeNotifier {
     List<String> options,
   ) {
     final Map<String, int> out = {};
-    for (final opt in options) out['${prefix}_$opt'] = (opt == value) ? 1 : 0;
+    for (final opt in options) {
+      out['${prefix}_$opt'] = (opt == value) ? 1 : 0;
+    }
     return out;
   }
 
