@@ -3,3 +3,5 @@ uvicorn
 xgboost
 pydantic
 numpy
+matplotlib
+reportlab
