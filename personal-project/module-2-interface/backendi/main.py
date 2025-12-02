@@ -28,9 +28,16 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # Cargar modelo
 model = xgb.XGBClassifier()
-model.load_model(
-    r"C:\Users\alejo\Desktop\BYUI\CSE-310 LOCAL\CSE-310\personal-project\module-2-interface\backendi\investment-pred.json"
-)
+
+# === CÓDIGO CORREGIDO PARA RUTAS RELATIVAS ===
+# 1. Obtiene el directorio donde se encuentra este script (backendi/)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 2. Construye la ruta al archivo del modelo dentro de ese directorio
+model_path = os.path.join(current_dir, "investment-pred.json")
+
+# 3. Carga el modelo usando la ruta dinámica
+model.load_model(model_path)
+# ===============================================
 
 EXPECTED_FEATURES = 289
 
