@@ -1,10 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import xgboost as xgb
 import numpy as np
-from datetime import datetime
 import os
+import uuid
+import time # Para generar nombres de archivo basados en timestamp
+from datetime import datetime
+
+# --- LIBRERÍAS DE CONEXIÓN ---
+from supabase import create_client, Client # Necesitas 'pip install supabase'
+# ------------------------------
 
 # ReportLab (PDF)
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
@@ -17,41 +23,44 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 # -----------------------------------------------------------
-# Configuración inicial 
-#uvicorn main:app --reload
-
+# CONFIGURACIÓN INICIAL Y CLIENTE SUPABASE
 # -----------------------------------------------------------
-
 app = FastAPI()
 REPORTS_DIR = "reports"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
+# *** IMPORTANTE: REEMPLAZA ESTAS CLAVES CON TUS CREDENCIALES REALES ***
+# Es mejor usar variables de entorno (os.environ.get) en producción
+
+SUPABASE_URL = "https://vhhusfbogsjknjsahfyy.supabase.co" 
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMDA1NDYsImV4cCI6MjA3Nzc3NjU0Nn0.J2GOSGKevlnJD5qNKdwOABoKyjIiDpRpPKE3TH_dEZI" 
+
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    print(f"Error initializing Supabase client: {e}")
+    # Esto puede hacer que la app falle si las credenciales son incorrectas
+
 # Cargar modelo
 model = xgb.XGBClassifier()
-
-# === CÓDIGO CORREGIDO PARA RUTAS RELATIVAS ===
-# 1. Obtiene el directorio donde se encuentra este script (backendi/)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 2. Construye la ruta al archivo del modelo dentro de ese directorio
 model_path = os.path.join(current_dir, "investment-pred.json")
-
-# 3. Carga el modelo usando la ruta dinámica
 model.load_model(model_path)
-# ===============================================
 
 EXPECTED_FEATURES = 289
 
-# NO OPI{"features": [2012, 550446000.0, 833, 224294282.96453083, 4976069792.101926, false, 7, 6, 2021, 0, 2, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false, false, false, true, false, false, true, false, false, false, false, true]}
-# OPI EXIT {"features": [2007, 153685000.0, 77, 50272760.11840928, 1103388240.7296083, true, 28, 5, 2017, 6, 2, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, true, false, false, false, false, false, false, false, false, false, true, false, false, false, false]}  
 # -----------------------------------------------------------
 # Esquemas
 # -----------------------------------------------------------
 
 class PredictionInput(BaseModel):
+    # ¡NUEVO CAMPO! Requerido por Flutter y para el registro de Supabase
+    user_id: str 
     features: list[float]
+    title: str = "New Startup Prediction" # Usado para el título en el reporte
 
 # -----------------------------------------------------------
-# Funciones auxiliares
+# Funciones auxiliares (Sin cambios en esta sección)
 # -----------------------------------------------------------
 
 def exponential_projection(current_value: float, growth_rate: float, years: int = 1):
@@ -68,15 +77,13 @@ def estimate_growth_rate(funding_amount: float):
 def simulate_and_plot(current_value: float, growth_rate: float, n_sim: int = 1000, sigma: float = 0.2):
     """
     Simula futuros valores y genera un gráfico en memoria (BytesIO) para el PDF.
-    Devuelve media, percentiles y la imagen del histograma.
     """
     simulated = np.random.lognormal(mean=np.log(current_value) + growth_rate, sigma=sigma, size=n_sim)
     mean_val = np.mean(simulated)
     p5 = np.percentile(simulated, 5)
     p95 = np.percentile(simulated, 95)
     
-    # Crear histograma
-    fig, ax = plt.subplots(figsize=(4, 2.5))  # tamaño en pulgadas
+    fig, ax = plt.subplots(figsize=(4, 2.5))
     ax.hist(simulated, bins=30, color='lightblue', edgecolor='black')
     ax.axvline(mean_val, color='red', linestyle='--', label='Mean')
     ax.axvline(p5, color='green', linestyle='--', label='5th percentile')
@@ -86,7 +93,6 @@ def simulate_and_plot(current_value: float, growth_rate: float, n_sim: int = 100
     ax.set_ylabel("Frequency")
     ax.legend(fontsize=6)
     
-    # Guardar figura en memoria
     img_buffer = BytesIO()
     plt.tight_layout()
     plt.savefig(img_buffer, format='PNG')
@@ -106,10 +112,13 @@ def create_pdf_report(
 ) -> str:
     """Genera un PDF con la predicción del modelo, revenue y valuación con gráficos."""
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"report_{timestamp}.pdf"
+    # El nombre del archivo ahora se genera en /predict (con user_id y timestamp)
+    # y solo se utiliza aquí el timestamp para el nombre temporal
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"temp_report_{timestamp}.pdf"
     filepath = os.path.join(REPORTS_DIR, filename)
 
+    # ... (código de ReportLab para generar el PDF) ...
     styles = getSampleStyleSheet()
     story = []
 
@@ -126,12 +135,12 @@ def create_pdf_report(
 
     # Información principal
     if prediction == 1:
-        prediction='IPO - High liquidity and visibility'
+        prediction_text='IPO - High liquidity and visibility'
     else:
-        prediction='Not IPO'
+        prediction_text='Not IPO'
 
     info = f"""
-    <b>XGBoost Prediction Exit-type:</b> {prediction}<br/>
+    <b>XGBoost Prediction Exit-type:</b> {prediction_text}<br/>
     <b>Model confidence:</b> {confidence*100:.3f}%<br/>
     <b>Founded year:</b> {founded_year}<br/>
     <b>Funding amount USD:</b> {funding_amount:,.2f}<br/>
@@ -159,6 +168,7 @@ def create_pdf_report(
     doc = SimpleDocTemplate(filepath, pagesize=letter)
     doc.build(story)
 
+    # Retorna el path temporal, que será renombrado en /predict
     return filepath
 
 # -----------------------------------------------------------
@@ -167,31 +177,71 @@ def create_pdf_report(
 
 @app.post("/predict")
 def predict(input_data: PredictionInput):
+    # --- 1. Predicción y Creación de PDF ---
     X = np.array([input_data.features])
 
     if X.shape[1] != EXPECTED_FEATURES:
-        return {"error": f"Model expects {EXPECTED_FEATURES} features, received {X.shape[1]}"}
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Model expects {EXPECTED_FEATURES} features, received {X.shape[1]}"
+        )
 
     # Predicción XGBoost
-    pred = int(model.predict(X)[0])
-    prob = model.predict_proba(X)[0]          # probabilidades por clase
-    conf = float(np.max(prob))                # confianza de la clase predicha
-
-    # Extraer valores del input
+    pred_int = int(model.predict(X)[0])
+    prob = model.predict_proba(X)[0]
+    conf = float(np.max(prob))
+    pred_label = 'IPO' if pred_int == 1 else 'NO IPO'
+    
+    # Extracción de valores para el PDF
     founded_year = int(input_data.features[0])
     funding_amount = float(input_data.features[1])
     employees = int(input_data.features[2])
     revenue = float(input_data.features[3])
     valuation = float(input_data.features[4])
 
-    # Crear PDF
-    pdf_path = create_pdf_report(pred, conf, revenue, valuation, funding_amount, founded_year, employees)
-    pdf_filename = os.path.basename(pdf_path)
+    # Crea PDF (devuelve un path temporal)
+    temp_pdf_path = create_pdf_report(pred_int, conf, revenue, valuation, funding_amount, founded_year, employees)
+    
+    # Generar el nombre de archivo final y renombrar el PDF
+    timestamp_key = int(time.time())
+    pdf_filename = f"report_{input_data.user_id}_{timestamp_key}.pdf"
+    final_pdf_path = os.path.join(REPORTS_DIR, pdf_filename)
+    os.rename(temp_pdf_path, final_pdf_path) # Renombra el archivo temporal
 
+    # --- 2. Persistencia en Supabase ---
+    try:
+        report_uuid = str(uuid.uuid4()) # Generar ID único para la PK
+        
+        data_to_save = {
+            # Mapeo a las columnas de la tabla 'report':
+            'reportid': report_uuid,
+            'model-used': 'XGBoost v1.0',
+            'version': 1,
+            'creation-date': datetime.now().strftime('%Y-%m-%d'),
+            'start-up-id': input_data.user_id, # ID de usuario de Flutter
+            'report_url': pdf_filename,        # Nombre del archivo para descargar
+            'confidence': conf,                # Confianza (tipo REAL)
+            "IPO_NO IPO": pred_label,          # Resultado ('IPO'/'NO IPO') (tipo TEXT)
+        }
+
+        response = supabase.table('report').insert(data_to_save).select().execute()
+        saved_report = response.data[0] 
+        report_id = saved_report['reportid']
+        
+    except Exception as e:
+        print(f"SUPABASE INSERTION ERROR: {e}")
+        # Retornar un error 500 para indicar que el guardado falló
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Prediction successful, but failed to save report to database: {e}"
+        )
+
+    # --- 3. Retornar la respuesta clave a Flutter ---
     return {
-        "prediction": pred,
+        "prediction": pred_int, # 1 o 0
         "confidence": conf,
-        "report_file": pdf_filename
+        "report_file": pdf_filename,
+        "report_id": report_id
     }
 
 @app.get("/download/{filename}")

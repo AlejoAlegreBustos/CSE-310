@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'providers/provider_form.dart';
+import 'providers/prediction_provider.dart';
 
 class SecondPage extends StatelessWidget {
   final String userId; // Recibe el userId al crear la página
@@ -71,10 +72,10 @@ class SecondPage extends StatelessWidget {
                             provider.fundingDate == null
                                 ? 'Select date'
                                 : provider.fundingDate!
-                                    .toLocal()
-                                    .toIso8601String()
-                                    .split('T')
-                                    .first,
+                                      .toLocal()
+                                      .toIso8601String()
+                                      .split('T')
+                                      .first,
                           ),
                           trailing: const Icon(Icons.calendar_today),
                           onTap: () async =>
@@ -206,31 +207,51 @@ class SecondPage extends StatelessWidget {
                       Row(
                         children: [
                           ElevatedButton(
+
                             onPressed: () {
                               if (!provider.validateForm()) return;
 
-                              final jsonData = provider.buildJsonForApi();
+                              // 1. Obtener la ESTRUCTURA JSON COMPLETA (que es un Map<String, dynamic>)
+                              final Map<String, dynamic> jsonData = provider
+                                  .buildJsonForApi();
 
+                              // 2. Extraer la lista de features. Es una lista de TIPO MIXTO (dynamic).
+                              //    FastAPI/Python usualmente lo acepta, pero Dart necesita saber que es List<dynamic>.
+                              //    Usamos 'as List<dynamic>' para hacer el cast seguro.
+                              final List<dynamic> features =
+                                  jsonData['features']
+                                      as List<
+                                        dynamic
+                                      >; // <-- ¡CORRECCIÓN CLAVE!
+
+                              // 3. LLAMAR AL PROVEEDOR DE PREDICCIÓN con la lista de features
+                              //    Necesitamos actualizar el método fetchPrediction del PredictionProvider
+                              //    para que acepte List<dynamic> en lugar de List<double>.
+
+                              Provider.of<PredictionProvider>(
+                                context,
+                                listen: false,
+                              ).fetchPrediction(features);
+
+                              // ... el resto de tu código de SnackBar y logs
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text(
-                                        'Form submitted! Check console')),
+                                  content: Text('Prediction request sent!'),
+                                ),
                               );
 
-                              final record = provider.buildRecord();
-                              debugPrint('--- Form Data ---');
-                              record.forEach((key, value) =>
-                                  debugPrint('$key: $value'));
                               debugPrint('--- JSON for API ---');
                               debugPrint(jsonData.toString());
                             },
+
                             child: const Text('Submit Form'),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton(
                             onPressed: () => provider.resetForm(),
                             style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey),
+                              backgroundColor: Colors.grey,
+                            ),
                             child: const Text('Reset'),
                           ),
                         ],
