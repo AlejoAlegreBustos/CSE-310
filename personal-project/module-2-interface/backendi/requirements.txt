@@ -5,4 +5,4 @@ pydantic
 numpy
 matplotlib
 reportlab
-sklearn
+scikit-learn
