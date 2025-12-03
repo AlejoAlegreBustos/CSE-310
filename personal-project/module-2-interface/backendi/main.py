@@ -5,12 +5,22 @@ import xgboost as xgb
 import numpy as np
 import os
 import uuid
-import time
+import time # Para generar nombres de archivo basados en timestamp
 from datetime import datetime
-from supabase import create_client, Client
-from fastapi.middleware.cors import CORSMiddleware # <--- 1. ¡NUEVA IMPORTACIÓN!
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from fastapi.middleware.cors import CORSMiddleware
+# --- LIBRERÍAS DE CONEXIÓN ---
+from supabase import create_client, Client # Necesitas 'pip install supabase'
+# ------------------------------
 
+# ReportLab (PDF)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+
+# Matplotlib para gráficos
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 # -----------------------------------------------------------
 # CONFIGURACIÓN INICIAL Y CLIENTE SUPABASE
@@ -45,8 +55,6 @@ app.add_middleware(
     allow_methods=["*"],       # Permitir todos los métodos (POST, GET, OPTIONS, etc.)
     allow_headers=["*"],       # Permitir todos los encabezados
 )
-# -----------------------------------------------------------
-
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
@@ -236,7 +244,7 @@ def predict(input_data: PredictionInput):
             "IPO_NO IPO": pred_label,          # Resultado ('IPO'/'NO IPO') (tipo TEXT)
         }
 
-        response = supabase.table('report').insert(data_to_save).select().execute()
+        response = supabase.table('reports').insert(data_to_save).select().execute()
         saved_report = response.data[0] 
         report_id = saved_report['reportid']
         
