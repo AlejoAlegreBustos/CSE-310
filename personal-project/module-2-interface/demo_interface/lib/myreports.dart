@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/user_provider.dart';
@@ -55,10 +54,28 @@ class _MyReportsPageState extends State<MyReportsPage> {
                   subtitle: Text("Created: ${report.createdAt}"),
                   trailing: IconButton(
                     icon: const Icon(Icons.picture_as_pdf),
-                    onPressed: () {
-                      // 🔥 AQUI LLAMAS TU FUNCIÓN QUE GENERA EL PDF
-                      // ejemplo: PdfService.generateReport(report);
-                      debugPrint("Download PDF of ${report.id}");
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final reportsProvider = Provider.of<ReportsProvider>(
+                        context,
+                        listen: false,
+                      );
+
+                      try {
+                        await reportsProvider.downloadReport(report.reportFile);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Download started for ${report.reportFile}'),
+                          ),
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Error downloading report: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),

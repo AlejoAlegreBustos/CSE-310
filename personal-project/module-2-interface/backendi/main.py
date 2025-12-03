@@ -229,30 +229,38 @@ def predict(input_data: PredictionInput):
     os.rename(temp_pdf_path, final_pdf_path) # Renombra el archivo temporal
 
     # --- 2. Persistencia en Supabase ---
+    # --- 2. Persistencia en Supabase ---
     try:
-        report_uuid = str(uuid.uuid4()) # Generar ID único para la PK
-        
+        report_uuid = str(uuid.uuid4())  # Generar ID único para la PK
+
         data_to_save = {
-            # Mapeo a las columnas de la tabla 'report':
+            # Nombres EXACTOS de las columnas en la tabla 'reports'
             'reportid': report_uuid,
             'model-used': 'XGBoost v1.0',
             'version': 1,
             'creation-date': datetime.now().strftime('%Y-%m-%d'),
-            'start-up-id': input_data.user_id, # ID de usuario de Flutter
-            'report_url': pdf_filename,        # Nombre del archivo para descargar
-            'confidence': conf,                # Confianza (tipo REAL)
-            "IPO_NO IPO": pred_label,          # Resultado ('IPO'/'NO IPO') (tipo TEXT)
+            # Si aún no usas la tabla "start-up", dejamos este campo vacío o None
+            'start-up-id': None,
+            'report_url': pdf_filename,
+            'confidence': conf,
+            'IPO_NO IPO': pred_label,
+            # Enlazamos el reporte con el usuario de la tabla public.user
+            'user_id': input_data.user_id,
         }
 
-        response = supabase.table('reports').insert(data_to_save).select().execute()
-        saved_report = response.data[0] 
-        report_id = saved_report['reportid']
-        
+        # En supabase-py 2.x, insert devuelve directamente la respuesta.
+        # No usamos .select() aquí.
+        response = supabase.table('reports').insert(data_to_save).execute()
+
+        # response.data suele ser una lista con las filas insertadas
+        saved_report = response.data[0] if response.data else data_to_save
+        report_id = saved_report.get('reportid', report_uuid)
+
     except Exception as e:
         print(f"SUPABASE INSERTION ERROR: {e}")
         # Retornar un error 500 para indicar que el guardado falló
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"Prediction successful, but failed to save report to database: {e}"
         )
 

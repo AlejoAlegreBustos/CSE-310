@@ -1,19 +1,45 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:demo_interface/models/prediction_result.dart';
+import 'package:flutter/foundation.dart'; // Añadido para debugPrint
 
 class ApiService {
   // === URL de tu servicio en Render ===
   final String baseUrl = "https://invest-app-72ob.onrender.com";
 
   // -----------------------------------------------------------------
-  // 1. Endpoint POST: /predict (Ya corregido)
+  // 1. Endpoint POST: /predict (CORREGIDO)
   // -----------------------------------------------------------------
-  Future<PredictionResult> getPrediction(List<dynamic> features) async {
+  /// Obtiene la predicción de la API de FastAPI.
+  /// Envía user_id y las features numéricas al modelo.
+  Future<PredictionResult> getPrediction(
+    List<double> features,
+    String userId,
+  ) async {
     final url = Uri.parse('$baseUrl/predict');
     final headers = {'Content-Type': 'application/json'};
 
-    final body = jsonEncode({'features': features});
+    // Ajuste defensivo: adaptamos el tamaño de features al esperado por el modelo.
+    const expectedFeatures = 289;
+    if (features.length > expectedFeatures) {
+      features = features.sublist(0, expectedFeatures);
+    } else if (features.length < expectedFeatures) {
+      features = [
+        ...features,
+        ...List<double>.filled(expectedFeatures - features.length, 0.0),
+      ];
+    }
+
+    // Construir el body con user_id y las features
+    final body = jsonEncode({
+      'user_id': userId,
+      'features': features,
+    });
+    
+    if (kDebugMode) {
+      debugPrint('API Request URL: $url');
+      debugPrint('API Request Body: $body');
+    }
 
     final response = await http.post(url, headers: headers, body: body);
 
@@ -28,7 +54,35 @@ class ApiService {
   }
 
   // -----------------------------------------------------------------
-  // 2. Endpoint GET: /download/{filename} (Ya implementado)
+  // 2. Nuevo endpoint: guardar metadatos del reporte en la DB
+  // -----------------------------------------------------------------
+  Future<void> saveReportMetadata({
+    required String userId,
+    required String filename,
+    required double confidence,
+    required String result,
+  }) async {
+    final url = Uri.parse('$baseUrl/reports');
+    final headers = {'Content-Type': 'application/json'};
+
+    final body = jsonEncode({
+      'user_id': userId,
+      'filename': filename,
+      'confidence': confidence,
+      'result': result,
+    });
+
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to save report metadata. Status: ${response.statusCode}. Body: ${response.body}',
+      );
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // 3. Endpoint GET: /download/{filename} (Ya implementado)
   // -----------------------------------------------------------------
   Future<http.Response> downloadReport(String filename) async {
     final url = Uri.parse('$baseUrl/download/$filename');

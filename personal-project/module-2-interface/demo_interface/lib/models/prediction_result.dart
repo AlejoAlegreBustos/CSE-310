@@ -1,22 +1,37 @@
 class PredictionResult {
-  final int prediction;
+  // La predicción se mapea como int (0 o 1) según tu estructura
+  final int prediction; 
+  // Campo que contendrá la decisión final (IPO o NO IPO)
+  final String result; 
   final double confidence;
-  final String reportFile;
+  // Usamos reportFile para que coincida con tu modelo existente
+  final String reportFile; 
 
   PredictionResult({
     required this.prediction,
+    required this.result,
     required this.confidence,
     required this.reportFile,
   });
 
-  // Factory constructor para crear una instancia desde un mapa JSON.
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
     return PredictionResult(
-      prediction: json['prediction'] as int,
-      // Usamos .toDouble() porque el valor 'confidence' puede venir como entero
-      // si es 1.0, pero lo necesitamos como double.
-      confidence: (json['confidence'] as num).toDouble(), 
-      reportFile: json['report_file'] as String,
+      // Mapeamos a int
+      prediction: json['prediction'] as int, 
+      // Campo de resultado categórico (necesario para guardar metadatos)
+      result: json['IPO_NO_IPO'] as String,
+      confidence: (json['confidence'] as num).toDouble(),
+      // Mapeamos desde 'report_file'
+      reportFile: json['report_file'] as String, 
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'prediction': prediction,
+      'IPO_NO_IPO': result,
+      'confidence': confidence,
+      'report_file': reportFile,
+    };
   }
 }

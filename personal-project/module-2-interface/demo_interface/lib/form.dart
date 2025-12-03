@@ -3,18 +3,167 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'providers/provider_form.dart';
 import 'providers/prediction_provider.dart';
+import 'models/prediction_result.dart'; // Importar el modelo para el diálogo
 
 class SecondPage extends StatelessWidget {
   final String userId; // Recibe el userId al crear la página
 
   const SecondPage({super.key, required this.userId});
 
+  // Método para mostrar el resultado de la predicción en un modal
+  void _showPredictionResultDialog(
+    BuildContext context, 
+    PredictionResult result,
+    PredictionProvider predictionProvider,
+  ) {
+    // Usar showDialog para un modal persistente
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Se puede cerrar haciendo tap fuera
+      builder: (BuildContext dialogContext) {
+        // Usamos un Consumer anidado para reaccionar al estado de guardado/carga
+        return Consumer<PredictionProvider>(
+          builder: (context, predProvider, child) {
+            
+            // Función para manejar el guardado dentro del Consumer para acceder a su estado
+            void handleSaveReport() async {
+              final bool success = await predProvider.saveReport(userId);
+              
+              // Mostrar feedback en la Snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(predProvider.saveMessage!), 
+                  backgroundColor: success ? Colors.green : Colors.red,
+                ),
+              );
+            }
+
+            // Deshabilitar el botón si ya se guardó o está cargando
+            final bool isSaved = predProvider.saveMessage?.contains('exitosa') == true;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+              title: Text('Resultado de la Predicción', 
+                style: TextStyle(color: result.prediction == 1 ? Colors.green : Colors.red),
+              ),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    Text(
+                      'Decisión de IPO:', 
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      result.result,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: result.prediction == 1 ? Colors.green.shade700 : Colors.red.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Text('Confianza del modelo: ${(result.confidence * 100).toStringAsFixed(2)}%'),
+                    const SizedBox(height: 15),
+                    Text('¡Puedes descargar el reporte detallado o guardar este resultado en tu historial!'),
+                    
+                    // Muestra el mensaje de guardado/error dentro del modal
+                    if (predProvider.saveMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Text(
+                          predProvider.saveMessage!,
+                          style: TextStyle(
+                            color: isSaved ? Colors.blue : Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                // Botón 1: Descargar PDF
+                TextButton.icon(
+                  icon: const Icon(Icons.download),
+                  label: const Text('Descargar PDF'),
+                  onPressed: predProvider.isLoading ? null : () {
+                    // Lógica de descarga (el provider solo hace la llamada, la UI maneja el guardado en disco)
+                    predProvider.downloadReport(result.reportFile);
+                    Navigator.of(dialogContext).pop(); // Cerrar el diálogo
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Comenzando descarga del reporte...')),
+                    );
+                  },
+                ),
+                // Botón 2: Guardar Reporte
+                ElevatedButton.icon(
+                  icon: predProvider.isLoading 
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.save),
+                  label: Text(
+                    predProvider.isLoading ? 'Guardando...' : 'Guardar Reporte',
+                  ),
+                  onPressed: predProvider.isLoading || isSaved
+                      ? null // Deshabilitar si está cargando o si ya se guardó con éxito
+                      : handleSaveReport,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSaved ? Colors.grey : Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // Limpiar el estado de la predicción (incluyendo el resultado y el mensaje de guardado) al cerrar el diálogo
+      predictionProvider.resetPredictionState();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => StartupFormProvider(userId: userId),
-      child: Consumer<StartupFormProvider>(
-        builder: (context, provider, _) {
+    // Usamos MultiProvider para asegurarnos de que el StartupFormProvider se crea aquí
+    return MultiProvider( 
+      providers: [
+        ChangeNotifierProvider(create: (_) => StartupFormProvider(userId: userId)),
+        ChangeNotifierProvider(create: (_) => PredictionProvider()),
+      ],
+      // Consumer2 para acceder al Provider del formulario y al de la predicción.
+      child: Consumer2<StartupFormProvider, PredictionProvider>(
+        builder: (context, providerForm, providerPrediction, _) {
+          
+          // Lógica para mostrar el diálogo si la predicción es exitosa
+          if (providerPrediction.predictionResult != null && 
+              providerPrediction.errorMessage == null &&
+              !providerPrediction.isLoading) {
+            
+            // Usamos addPostFrameCallback para evitar llamar a showDialog durante el build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+                _showPredictionResultDialog(
+                  context, 
+                  providerPrediction.predictionResult!, 
+                  providerPrediction,
+                );
+            });
+          }
+
+          // Manejo de errores de predicción
+          if (providerPrediction.errorMessage != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${providerPrediction.errorMessage!}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                // No llamamos a resetPredictionState aquí porque lo hará el diálogo al cerrarse, 
+                // pero sí lo hacemos en el proveedor si el error es de conexión/API.
+                // En este caso, el error se limpia en el SnackBar.
+            });
+          }
+
           return Scaffold(
             appBar: AppBar(
               backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -24,7 +173,7 @@ class SecondPage extends StatelessWidget {
               padding: const EdgeInsets.all(12.0),
               child: SingleChildScrollView(
                 child: Form(
-                  key: provider.formKey,
+                  key: providerForm.formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -38,25 +187,25 @@ class SecondPage extends StatelessWidget {
                       const SizedBox(height: 12),
 
                       // Founded Year
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Founded Year',
-                        provider.foundedYearController,
+                        providerForm.foundedYearController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
 
                       // Employee Count
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Employee Count',
-                        provider.employeeCountController,
+                        providerForm.employeeCountController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
 
                       // Funding Amount
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Funding Amount USD',
-                        provider.fundingAmountUsdController,
+                        providerForm.fundingAmountUsdController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
@@ -69,9 +218,9 @@ class SecondPage extends StatelessWidget {
                         ),
                         child: ListTile(
                           title: Text(
-                            provider.fundingDate == null
+                            providerForm.fundingDate == null
                                 ? 'Select date'
-                                : provider.fundingDate!
+                                : providerForm.fundingDate!
                                       .toLocal()
                                       .toIso8601String()
                                       .split('T')
@@ -79,99 +228,99 @@ class SecondPage extends StatelessWidget {
                           ),
                           trailing: const Icon(Icons.calendar_today),
                           onTap: () async =>
-                              await provider.pickFundingDate(context),
+                              await providerForm.pickFundingDate(context),
                         ),
                       ),
                       const SizedBox(height: 8),
 
                       // Funding Round
-                      provider.buildDropdown(
+                      providerForm.buildDropdown(
                         'Funding Round',
-                        provider.fundingRound,
-                        provider.fundingRounds,
-                        provider.setFundingRound,
+                        providerForm.fundingRound,
+                        providerForm.fundingRounds,
+                        providerForm.setFundingRound,
                       ),
-                      provider.buildOtherField(
-                        provider.fundingRound,
-                        provider.otherFundingRoundController,
+                      providerForm.buildOtherField(
+                        providerForm.fundingRound,
+                        providerForm.otherFundingRoundController,
                         'Specify Other Funding Round',
                       ),
                       const SizedBox(height: 8),
 
                       // Co-investors
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Co-investors count',
-                        provider.coInvestorsCountController,
+                        providerForm.coInvestorsCountController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
 
                       // Lead Investor
-                      provider.buildDropdown(
+                      providerForm.buildDropdown(
                         'Lead Investor',
-                        provider.leadInvestor,
-                        provider.leadInvestors,
-                        provider.setLeadInvestor,
+                        providerForm.leadInvestor,
+                        providerForm.leadInvestors,
+                        providerForm.setLeadInvestor,
                       ),
-                      provider.buildOtherField(
-                        provider.leadInvestor,
-                        provider.otherLeadInvestorController,
+                      providerForm.buildOtherField(
+                        providerForm.leadInvestor,
+                        providerForm.otherLeadInvestorController,
                         'Specify Other Lead Investor',
                       ),
                       const SizedBox(height: 8),
 
                       // Country
-                      provider.buildDropdown(
+                      providerForm.buildDropdown(
                         'Country',
-                        provider.country,
-                        provider.countriesList,
-                        provider.setCountry,
+                        providerForm.country,
+                        providerForm.countriesList,
+                        providerForm.setCountry,
                       ),
-                      provider.buildOtherField(
-                        provider.country,
-                        provider.otherCountryController,
+                      providerForm.buildOtherField(
+                        providerForm.country,
+                        providerForm.otherCountryController,
                         'Specify Other Country',
                       ),
                       const SizedBox(height: 8),
 
                       // Region
-                      provider.buildDropdown(
+                      providerForm.buildDropdown(
                         'Region',
-                        provider.region,
-                        provider.regions,
-                        provider.setRegion,
+                        providerForm.region,
+                        providerForm.regions,
+                        providerForm.setRegion,
                       ),
-                      provider.buildOtherField(
-                        provider.region,
-                        provider.otherRegionController,
+                      providerForm.buildOtherField(
+                        providerForm.region,
+                        providerForm.otherRegionController,
                         'Specify Other Region',
                       ),
                       const SizedBox(height: 8),
 
                       // Industry
-                      provider.buildDropdown(
+                      providerForm.buildDropdown(
                         'Industry',
-                        provider.industry,
-                        provider.industries,
-                        provider.setIndustry,
+                        providerForm.industry,
+                        providerForm.industries,
+                        providerForm.setIndustry,
                       ),
-                      provider.buildOtherField(
-                        provider.industry,
-                        provider.otherIndustryController,
+                      providerForm.buildOtherField(
+                        providerForm.industry,
+                        providerForm.otherIndustryController,
                         'Specify Other Industry',
                       ),
                       const SizedBox(height: 8),
 
                       // Revenue & Valuation
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Estimated Revenue USD',
-                        provider.estimatedRevenueUsdController,
+                        providerForm.estimatedRevenueUsdController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
-                      provider.buildTextField(
+                      providerForm.buildTextField(
                         'Estimated Valuation USD',
-                        provider.estimatedValuationUsdController,
+                        providerForm.estimatedValuationUsdController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
@@ -182,8 +331,8 @@ class SecondPage extends StatelessWidget {
                         child: CheckboxListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Exited'),
-                          value: provider.exited,
-                          onChanged: (v) => provider.setExited(v ?? false),
+                          value: providerForm.exited,
+                          onChanged: (v) => providerForm.setExited(v ?? false),
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -193,11 +342,11 @@ class SecondPage extends StatelessWidget {
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
-                        children: provider.tags.keys.map((key) {
+                        children: providerForm.tags.keys.map((key) {
                           return FilterChip(
                             label: Text(key.replaceFirst('tag_', '')),
-                            selected: provider.tags[key] ?? false,
-                            onSelected: (sel) => provider.setTag(key, sel),
+                            selected: providerForm.tags[key] ?? false,
+                            onSelected: (sel) => providerForm.setTag(key, sel),
                           );
                         }).toList(),
                       ),
@@ -206,49 +355,45 @@ class SecondPage extends StatelessWidget {
                       // Buttons
                       Row(
                         children: [
-                          ElevatedButton(
+                          ElevatedButton.icon(
+                            icon: providerPrediction.isLoading 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.analytics),
+                            onPressed: providerPrediction.isLoading
+                                ? null
+                                : () {
+                                    if (!providerForm.validateForm()) return;
 
-                            onPressed: () {
-                              if (!provider.validateForm()) return;
+                                    final Map<String, dynamic> jsonData =
+                                        providerForm.buildJsonForApi();
 
-                              // 1. Obtener la ESTRUCTURA JSON COMPLETA (que es un Map<String, dynamic>)
-                              final Map<String, dynamic> jsonData = provider
-                                  .buildJsonForApi();
+                                    final List<double> features =
+                                        (jsonData['features'] as List<dynamic>)
+                                            .cast<double>();
+                                    
+                                    final String userIdFromForm = providerForm.userId;
 
-                              // 2. Extraer la lista de features. Es una lista de TIPO MIXTO (dynamic).
-                              //    FastAPI/Python usualmente lo acepta, pero Dart necesita saber que es List<dynamic>.
-                              //    Usamos 'as List<dynamic>' para hacer el cast seguro.
-                              final List<dynamic> features =
-                                  jsonData['features']
-                                      as List<
-                                        dynamic
-                                      >; // <-- ¡CORRECCIÓN CLAVE!
+                                    // 3. LLAMAR AL PROVEEDOR DE PREDICCIÓN (pasando features y userId)
+                                    providerPrediction.fetchPrediction(features, userIdFromForm);
 
-                              // 3. LLAMAR AL PROVEEDOR DE PREDICCIÓN con la lista de features
-                              //    Necesitamos actualizar el método fetchPrediction del PredictionProvider
-                              //    para que acepte List<dynamic> en lugar de List<double>.
+                                    // Mostrar Snackbar temporal para indicar que la solicitud fue enviada
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Predicción solicitada. Esperando respuesta...'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
 
-                              Provider.of<PredictionProvider>(
-                                context,
-                                listen: false,
-                              ).fetchPrediction(features);
-
-                              // ... el resto de tu código de SnackBar y logs
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Prediction request sent!'),
-                                ),
-                              );
-
-                              debugPrint('--- JSON for API ---');
-                              debugPrint(jsonData.toString());
-                            },
-
-                            child: const Text('Submit Form'),
+                                    if (kDebugMode) {
+                                      debugPrint('--- JSON for API ---');
+                                      debugPrint(jsonData.toString());
+                                    }
+                                  },
+                            label: Text(providerPrediction.isLoading ? 'Processing...' : 'Predict IPO Success'),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton(
-                            onPressed: () => provider.resetForm(),
+                            onPressed: () => providerForm.resetForm(),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey,
                             ),

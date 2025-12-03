@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/login_provider.dart';
+import '../providers/user_provider.dart';
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -56,6 +57,10 @@ class _LoginPageState extends State<LoginPage> {
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
                         onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
+                          final userProvider = Provider.of<UserProvider>(context, listen: false);
+
                           final loginOK = await provider.login(
                             emailCtrl.text,
                             passCtrl.text,
@@ -64,15 +69,18 @@ class _LoginPageState extends State<LoginPage> {
                           if (!mounted) return;
 
                           if (loginOK) {
-                            Navigator.pushReplacement(
-                              context,
+                            // Sincronizar el usuario logueado con UserProvider para otras pantallas
+                            if (provider.currentUser != null) {
+                              userProvider.setUser(provider.currentUser!);
+                            }
+
+                            navigator.pushReplacement(
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const HomePage(), // aquí cambiamos ProfilePage por HomePage
+                                builder: (_) => const HomePage(),
                               ),
                             );
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text("Email or password incorrect"),
                               ),

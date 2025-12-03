@@ -10,7 +10,7 @@ class SupabaseService {
     try {
       final response = await client
           .from('user')
-          .select('user_id, password, email, uname, lname, reportid')
+          .select('user_id, password, email, uname, lname')
           .eq('email', email)
           .maybeSingle();
 
@@ -31,7 +31,6 @@ class SupabaseService {
           name: response['uname'] ?? "User",
           lastName: response['lname'] ?? "",
           email: response['email'] ?? "",
-          reportId: response['reportid'],
         );
       } else {
         debugPrint('Password incorrect');
@@ -48,7 +47,7 @@ class SupabaseService {
     try {
       final response = await client
           .from('user')
-          .select('user_id, email, uname, lname, reportid')
+          .select('user_id, email, uname, lname')
           .eq('email', email)
           .maybeSingle();
 
@@ -61,7 +60,6 @@ class SupabaseService {
         name: response['uname'] ?? "",
         lastName: response['lname'] ?? "",
         email: response['email'] ?? "",
-        reportId: response['reportid'],
       );
     } catch (e) {
       debugPrint("Profile error: $e");

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/countries.dart';
+import '../models/countries.dart'; // Asegúrate de que este import sea correcto
 
 class StartupFormProvider extends ChangeNotifier {
   final String userId;
@@ -108,7 +108,7 @@ class StartupFormProvider extends ChangeNotifier {
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         validator: (value) {
           if (value == null || value.isEmpty) return 'Please enter $label';
-          if (isNumber && int.tryParse(value) == null) {
+          if (isNumber && double.tryParse(value) == null) { // Usar double para ser más flexible
             return 'Enter a valid number';
           }
           return null;
@@ -238,7 +238,10 @@ class StartupFormProvider extends ChangeNotifier {
     );
     record['co_investors_count'] = tryParseInt(coInvestorsCountController.text);
 
-    record['exit_type_No Exit'] = exited ? 0 : 1;
+    // La columna del modelo es 'exit_type_No Exit'. Si Exited=true, significa que NO hay 'No Exit'.
+    // Esto podría necesitar una revisión si el modelo espera un booleano, 
+    // pero basado en tu código anterior, usamos 0 y 1.
+    record['exit_type_No Exit'] = exited ? 0 : 1; 
 
     if (fundingDate != null) {
       final d = fundingDate!;
@@ -297,21 +300,29 @@ class StartupFormProvider extends ChangeNotifier {
   }
 
   // --- JSON listo para API ---
+  // Función CORREGIDA para asegurar que la lista 'features' solo contenga doubles.
   Map<String, dynamic> buildJsonForApi() {
     final record = buildRecord();
-    final List<dynamic> features = [];
+    final List<double> features = []; // La lista de features debe ser List<double>
 
-    features.add(record['founded_year'] ?? 0);
+    // 1. Features Numéricas principales (convertidas a double)
+    features.add((record['founded_year'] ?? 0).toDouble());
     features.add(record['funding_amount_usd'] ?? 0.0);
-    features.add(record['employee_count'] ?? 0);
+    features.add((record['employee_count'] ?? 0).toDouble());
     features.add(record['estimated_revenue_usd'] ?? 0.0);
     features.add(record['estimated_valuation_usd'] ?? 0.0);
-    features.add(record['funding_date_day'] ?? 0);
-    features.add(record['funding_date_month'] ?? 0);
-    features.add(record['funding_date_year'] ?? 0);
-    features.add(record['funding_date_weekday'] ?? 0);
-    features.add(record['funding_date_quarter'] ?? 0);
+    
+    // 2. Features de fecha (convertidas a double)
+    features.add((record['funding_date_day'] ?? 0).toDouble());
+    features.add((record['funding_date_month'] ?? 0).toDouble());
+    features.add((record['funding_date_year'] ?? 0).toDouble());
+    features.add((record['funding_date_weekday'] ?? 0).toDouble());
+    features.add((record['funding_date_quarter'] ?? 0).toDouble());
 
+    // 3. Feature 'exit_type_No Exit' (convertida a double)
+    features.add((record['exit_type_No Exit'] ?? 0).toDouble()); 
+
+    // 4. Keys de One-Hot Encoding/Tags (asegurando que sean doubles)
     final oneHotKeys = record.keys.where(
       (k) =>
           k.startsWith('country_') ||
@@ -325,14 +336,22 @@ class StartupFormProvider extends ChangeNotifier {
     final sortedKeys = oneHotKeys.toList()..sort();
     for (final k in sortedKeys) {
       final val = record[k];
+      
+      // Todos los valores One-Hot y Tags son 0 o 1 (int), los convertimos a 0.0 o 1.0 (double)
       if (val is int) {
-        features.add(val == 1 ? true : false);
-      } else {
+        features.add(val.toDouble()); 
+      } else if (val is double) {
         features.add(val);
+      } else {
+        features.add(0.0); // Valor por defecto seguro
       }
     }
 
-    return {'features': features};
+    // La API de FastAPI espera 'user_id' (para logging/BD) y 'features' para el modelo.
+    return {
+      'user_id': userId,
+      'features': features,
+    };
   }
 
   Map<String, int> oneHotEncode(

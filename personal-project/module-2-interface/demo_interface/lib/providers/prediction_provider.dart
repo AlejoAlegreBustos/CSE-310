@@ -1,55 +1,112 @@
-import 'package:flutter/material.dart';
-import '../models/prediction_result.dart';
-import '../services/api_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:demo_interface/models/prediction_result.dart';
+import 'package:demo_interface/services/api_service.dart';
 
-// Este es el gestor de estado que usarás en tus widgets (con Consumer o Provider.of)
 class PredictionProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
-  PredictionResult? _result;
+  PredictionResult? _predictionResult; // Resultado temporal de la predicción
   bool _isLoading = false;
   String? _errorMessage;
+  String? _saveMessage; // Mensaje para notificar el éxito/fallo al guardar
 
-  // Getters para acceder al estado desde los widgets
-  PredictionResult? get result => _result;
+  // Getters
+  PredictionResult? get predictionResult => _predictionResult;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get saveMessage => _saveMessage;
 
-  // Función principal para obtener la predicción
-  Future<void> fetchPrediction(List<dynamic> features) async {
+  // Reinicia los estados de la predicción
+  void resetPredictionState() {
+    _predictionResult = null;
+    _errorMessage = null;
+    _saveMessage = null;
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------------
+  // 1. Obtiene la predicción de FastAPI (NO GUARDA en DB todavía)
+  // ------------------------------------------------------------------
+  Future<void> fetchPrediction(List<double> features, String userId) async {
+    // Validación opcional de userId (ya no se envía al modelo, pero se usa para guardar luego)
+    if (userId == 'default-anonymous-id' || userId.isEmpty) {
+      _errorMessage = 'Error: No se pudo obtener el ID del usuario. Por favor, inicie sesión correctamente.';
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _errorMessage = null;
-    _result = null;
-    notifyListeners(); // Notifica que la carga ha comenzado
+    _saveMessage = null;
+    notifyListeners();
 
     try {
-      // Llama al servicio de red
-      // Asegúrate de que el ApiService también acepte List<dynamic>
-      final data = await _apiService.getPrediction(features);
-      _result = data;
+      // Llama a la API y el resultado se mapea a PredictionResult
+      final result = await _apiService.getPrediction(features, userId);
+      _predictionResult = result;
+      _errorMessage = null;
     } catch (e) {
-      // Captura y almacena cualquier error de conexión o API
-      _errorMessage = e.toString();
-      print("Error during prediction: $_errorMessage");
+      _errorMessage = 'Fallo al obtener la predicción: ${e.toString()}';
+      if (kDebugMode) {
+        debugPrint('Prediction Error: $e');
+      }
     } finally {
       _isLoading = false;
-      notifyListeners(); // Notifica que la carga ha terminado
+      notifyListeners();
     }
   }
 
-  // Función para descargar el PDF (opcionalmente)
-  Future<void> downloadReport(String filename) async {
+  // ------------------------------------------------------------------
+  // 2. Guarda explícitamente el reporte en la DB (Llamado por el usuario)
+  // ------------------------------------------------------------------
+  Future<bool> saveReport(String userId) async {
+    if (_predictionResult == null) {
+      _saveMessage = 'No hay resultado de predicción para guardar.';
+      notifyListeners();
+      return false;
+    }
+    
+    _isLoading = true;
+    _saveMessage = null;
+    notifyListeners();
+
     try {
-      final response = await _apiService.downloadReport(filename);
-      // Aquí manejarías guardar el 'response.bodyBytes' como un archivo .pdf en el dispositivo del usuario.
+      // Llama al nuevo método del ApiService para guardar solo los metadatos.
+      // Aquí se utiliza reportFile, confidence y result del modelo temporal.
+      await _apiService.saveReportMetadata(
+        userId: userId,
+        filename: _predictionResult!.reportFile,
+        confidence: _predictionResult!.confidence,
+        result: _predictionResult!.result,
+      );
+      
+      _saveMessage = '¡Reporte guardado exitosamente en tu historial!';
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _saveMessage = 'Fallo al guardar el reporte: ${e.toString()}';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 
-      // NOTA: La lógica para guardar el archivo difiere entre web, móvil y escritorio.
-      // Si quieres ayuda para implementar la descarga en una plataforma específica, házmelo saber.
+  // ------------------------------------------------------------------
+  // 3. Descarga de Reporte
+  // ------------------------------------------------------------------
+  Future<void> downloadReport(String filename) async {
+    // La implementación de la descarga debe manejar el guardado del archivo
+    // en la plataforma específica (Web, Móvil, Escritorio).
+    try {
+      await _apiService.downloadReport(filename);
+      // Aquí manejarías guardar el bodyBytes como archivo PDF en la plataforma específica.
 
-      print("Reporte descargado exitosamente (Cuerpo de bytes recibido).");
+      debugPrint("Reporte descargado exitosamente (cuerpo de bytes recibido).");
       // Añadir lógica de notificación al usuario (ej: un Snackbar)
     } catch (e) {
-      print("Error al descargar el reporte: $e");
+      debugPrint("Error al descargar el reporte: $e");
     }
   }
 }
