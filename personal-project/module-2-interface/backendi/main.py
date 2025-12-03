@@ -33,7 +33,7 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 # Es mejor usar variables de entorno (os.environ.get) en producción
 
 SUPABASE_URL = "https://vhhusfbogsjknjsahfyy.supabase.co" 
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMDA1NDYsImV4cCI6MjA3Nzc3NjU0Nn0.J2GOSGKevlnJD5qNKdwOABoKyjIiDpRpPKE3TH_dEZI" 
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjIwMDU0NiwiZXhwIjoyMDc3Nzc2NTQ2fQ.9my-umoYH7-FW86nTzjYHggjQ9HuEWuGZxu5nJxf3vk" 
 
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
