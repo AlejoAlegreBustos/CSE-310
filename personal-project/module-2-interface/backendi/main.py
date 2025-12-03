@@ -5,22 +5,12 @@ import xgboost as xgb
 import numpy as np
 import os
 import uuid
-import time # Para generar nombres de archivo basados en timestamp
+import time
 from datetime import datetime
-
-# --- LIBRERÍAS DE CONEXIÓN ---
-from supabase import create_client, Client # Necesitas 'pip install supabase'
-# ------------------------------
-
-# ReportLab (PDF)
+from supabase import create_client, Client
+from fastapi.middleware.cors import CORSMiddleware # <--- 1. ¡NUEVA IMPORTACIÓN!
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
 
-# Matplotlib para gráficos
-import matplotlib.pyplot as plt
-from io import BytesIO
 
 # -----------------------------------------------------------
 # CONFIGURACIÓN INICIAL Y CLIENTE SUPABASE
@@ -30,10 +20,32 @@ REPORTS_DIR = "reports"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # *** IMPORTANTE: REEMPLAZA ESTAS CLAVES CON TUS CREDENCIALES REALES ***
-# Es mejor usar variables de entorno (os.environ.get) en producción
-
 SUPABASE_URL = "https://vhhusfbogsjknjsahfyy.supabase.co" 
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjIwMDU0NiwiZXhwIjoyMDc3Nzc2NTQ2fQ.9my-umoYH7-FW86nTzjYHggjQ9HuEWuGZxu5nJxf3vk" 
+
+# -----------------------------------------------------------
+# 2. CONFIGURACIÓN DEL MIDDLEWARE DE CORS
+# -----------------------------------------------------------
+# La lista de orígenes DEBE incluir tu URL de Render (producción) y tus puertos de desarrollo (local)
+origins = [
+    # Producción (Tu URL de Render, si aplica)
+    "https://invest-app-72ob.onrender.com",
+    # Desarrollo Local (Flutter Web/Edge)
+    "http://localhost:62898",  # Asegúrate de usar el puerto correcto (62898 es el que aparece en tu log)
+    "http://127.0.0.1:62898", # Espejo del anterior
+    "http://localhost:5000", # Puertos comunes si usas un proxy o frontend diferente
+    "http://127.0.0.1:5000",
+    "*", # Permite CUALQUIER origen (Solo para desarrollo rápido, usar el puerto específico es mejor)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,     # Lista de orígenes permitidos
+    allow_credentials=True,    # Permitir cookies y encabezados de autorización
+    allow_methods=["*"],       # Permitir todos los métodos (POST, GET, OPTIONS, etc.)
+    allow_headers=["*"],       # Permitir todos los encabezados
+)
+# -----------------------------------------------------------
 
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
