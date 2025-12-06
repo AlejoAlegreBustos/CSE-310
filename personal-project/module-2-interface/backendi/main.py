@@ -67,7 +67,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, "investment-pred.json")
 model.load_model(model_path)
 
-EXPECTED_FEATURES = 289
+EXPECTED_FEATURES = 29
 
 # -----------------------------------------------------------
 # Esquemas

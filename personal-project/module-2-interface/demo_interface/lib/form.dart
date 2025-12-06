@@ -264,32 +264,32 @@ class SecondPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // Lead Investor
-                      providerForm.buildDropdown(
-                        'Lead Investor',
-                        providerForm.leadInvestor,
-                        providerForm.leadInvestors,
-                        providerForm.setLeadInvestor,
-                      ),
-                      providerForm.buildOtherField(
-                        providerForm.leadInvestor,
-                        providerForm.otherLeadInvestorController,
-                        'Specify Other Lead Investor',
-                      ),
-                      const SizedBox(height: 8),
+                      // // Lead Investor
+                      // providerForm.buildDropdown(
+                      //   'Lead Investor',
+                      //   providerForm.leadInvestor,
+                      //   providerForm.leadInvestors,
+                      //   providerForm.setLeadInvestor,
+                      // ),
+                      // providerForm.buildOtherField(
+                      //   providerForm.leadInvestor,
+                      //   providerForm.otherLeadInvestorController,
+                      //   'Specify Other Lead Investor',
+                      // ),
+                      // const SizedBox(height: 8),
 
-                      // Country
-                      providerForm.buildDropdown(
-                        'Country',
-                        providerForm.country,
-                        providerForm.countriesList,
-                        providerForm.setCountry,
-                      ),
-                      providerForm.buildOtherField(
-                        providerForm.country,
-                        providerForm.otherCountryController,
-                        'Specify Other Country',
-                      ),
+                      // // Country
+                      // providerForm.buildDropdown(
+                      //   'Country',
+                      //   providerForm.country,
+                      //   providerForm.countriesList,
+                      //   providerForm.setCountry,
+                      // ),
+                      // providerForm.buildOtherField(
+                      //   providerForm.country,
+                      //   providerForm.otherCountryController,
+                      //   'Specify Other Country',
+                      // ),
                       const SizedBox(height: 8),
 
                       // Region
@@ -346,20 +346,20 @@ class SecondPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 15),
 
-                      // Tags
-                      const Text('Tags'),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: providerForm.tags.keys.map((key) {
-                          return FilterChip(
-                            label: Text(key.replaceFirst('tag_', '')),
-                            selected: providerForm.tags[key] ?? false,
-                            onSelected: (sel) => providerForm.setTag(key, sel),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
+                      // // Tags
+                      // const Text('Tags'),
+                      // const SizedBox(height: 8),
+                      // Wrap(
+                      //   spacing: 8,
+                      //   children: providerForm.tags.keys.map((key) {
+                      //     return FilterChip(
+                      //       label: Text(key.replaceFirst('tag_', '')),
+                      //       selected: providerForm.tags[key] ?? false,
+                      //       onSelected: (sel) => providerForm.setTag(key, sel),
+                      //     );
+                      //   }).toList(),
+                      // ),
+                      // const SizedBox(height: 20),
 
                       // Buttons
                       Row(
