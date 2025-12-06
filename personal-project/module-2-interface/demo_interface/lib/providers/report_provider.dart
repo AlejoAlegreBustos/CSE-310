@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/report_model.dart';
 import '../services/api_service.dart'; // Asegúrate de tener esta importación
-
 class ReportsProvider extends ChangeNotifier {
   // Instancia del ApiService para la descarga
   final ApiService _apiService = ApiService(); 
@@ -27,11 +27,13 @@ class ReportsProvider extends ChangeNotifier {
           .from('reports')
           .select()
           .eq('user_id', userId)
-          .order('created_at', ascending: false);
+          // La columna creada en FastAPI es 'creation-date', no 'created_at'.
+          // Si prefieres evitar errores por nombre de columna, puedes quitar el order().
+          .order('creation-date', ascending: false);
 
       _reports.clear();
       for (var item in res) {
-        // Asegúrate de que el ReportModel.fromJson maneje todos los campos de Supabase
+        // ReportModel.fromJson ahora está alineado con el esquema real de la tabla 'reports'
         _reports.add(ReportModel.fromJson(item)); 
       }
 
@@ -50,27 +52,24 @@ class ReportsProvider extends ChangeNotifier {
   // --- 2. Lógica para descargar reportes (desde FastAPI) ---
   Future<void> downloadReport(String filename) async {
     try {
-      // Llamada al ApiService para obtener la respuesta binaria del PDF
-      final response = await _apiService.downloadReport(filename);
+      final url = Uri.parse('${_apiService.baseUrl}/download/$filename');
 
-      if (response.statusCode == 200) {
-        // La descarga es exitosa. Aquí debes añadir la lógica de guardar el archivo.
-        
-        // NOTA: La implementación de guardar archivos es compleja y depende de la plataforma (web, móvil).
-        // Por ahora, solo confirmamos la recepción.
-        debugPrint("PDF received successfully. Status: ${response.statusCode}.");
-
-        // Idealmente, aquí notificarías al usuario (ej: un SnackBar)
-        // Muestra un mensaje de éxito (esto requiere context, que no está disponible aquí)
-        // Por ahora, solo log.
-
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+        if (kDebugMode) {
+          debugPrint('PDF abierto en el navegador: $url');
+        }
       } else {
-        throw Exception('Server returned status code ${response.statusCode}');
+        _errorMessage = 'No se pudo abrir la URL de descarga: $url';
+        debugPrint(_errorMessage);
       }
     } catch (e) {
       // Manejar errores de conexión o del servidor FastAPI
       _errorMessage = 'Error downloading report: ${e.toString()}';
-      debugPrint("Download Error: $e");
+      debugPrint('Download Error: $e');
     }
     // No notificamos listeners después de la descarga a menos que queramos mostrar 
     // el estado de la descarga en la UI, lo cual es opcional.

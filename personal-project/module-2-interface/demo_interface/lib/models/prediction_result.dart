@@ -1,11 +1,10 @@
 class PredictionResult {
-  // La predicción se mapea como int (0 o 1) según tu estructura
-  final int prediction; 
-  // Campo que contendrá la decisión final (IPO o NO IPO)
-  final String result; 
+  // Predicción cruda del modelo (0 o 1)
+  final int prediction;
+  // Texto legible para mostrar en UI (ej: 'IPO' o 'NO IPO')
+  final String result;
   final double confidence;
-  // Usamos reportFile para que coincida con tu modelo existente
-  final String reportFile; 
+  final String reportFile;
 
   PredictionResult({
     required this.prediction,
@@ -15,21 +14,23 @@ class PredictionResult {
   });
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
+    final int pred = json['prediction'] as int;
+    final String derivedLabel = pred == 1 ? 'IPO' : 'NO IPO';
+
     return PredictionResult(
-      // Mapeamos a int
-      prediction: json['prediction'] as int, 
-      // Campo de resultado categórico (necesario para guardar metadatos)
-      result: json['IPO_NO_IPO'] as String,
+      prediction: pred,
+      // El backend actual devuelve 'prediction', 'confidence', 'report_file'
+      // así que derivamos el texto a partir de prediction.
+      result: derivedLabel,
       confidence: (json['confidence'] as num).toDouble(),
-      // Mapeamos desde 'report_file'
-      reportFile: json['report_file'] as String, 
+      reportFile: json['report_file'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'prediction': prediction,
-      'IPO_NO_IPO': result,
+      'result': result,
       'confidence': confidence,
       'report_file': reportFile,
     };

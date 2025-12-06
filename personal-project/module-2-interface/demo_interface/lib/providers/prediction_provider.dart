@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:demo_interface/models/prediction_result.dart';
 import 'package:demo_interface/services/api_service.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class PredictionProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
@@ -27,7 +27,11 @@ class PredictionProvider with ChangeNotifier {
   // ------------------------------------------------------------------
   // 1. Obtiene la predicción de FastAPI (NO GUARDA en DB todavía)
   // ------------------------------------------------------------------
-  Future<void> fetchPrediction(List<double> features, String userId) async {
+  Future<void> fetchPrediction(
+    List<double> features,
+    String userId,
+    String startupName,
+  ) async {
     // Validación opcional de userId (ya no se envía al modelo, pero se usa para guardar luego)
     if (userId == 'default-anonymous-id' || userId.isEmpty) {
       _errorMessage = 'Error: No se pudo obtener el ID del usuario. Por favor, inicie sesión correctamente.';
@@ -43,7 +47,11 @@ class PredictionProvider with ChangeNotifier {
 
     try {
       // Llama a la API y el resultado se mapea a PredictionResult
-      final result = await _apiService.getPrediction(features, userId);
+      final result = await _apiService.getPrediction(
+        features,
+        userId,
+        startupName,
+      );
       _predictionResult = result;
       _errorMessage = null;
     } catch (e) {
@@ -58,7 +66,9 @@ class PredictionProvider with ChangeNotifier {
   }
 
   // ------------------------------------------------------------------
-  // 2. Guarda explícitamente el reporte en la DB (Llamado por el usuario)
+  // 2. Marca explícitamente el reporte como "guardado" (Llamado por el usuario)
+  //    El backend ya guarda el reporte en Supabase dentro de /predict,
+  //    así que aquí solo actualizamos el estado de la UI.
   // ------------------------------------------------------------------
   Future<bool> saveReport(String userId) async {
     if (_predictionResult == null) {
@@ -66,47 +76,39 @@ class PredictionProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
-    
+
     _isLoading = true;
     _saveMessage = null;
     notifyListeners();
 
-    try {
-      // Llama al nuevo método del ApiService para guardar solo los metadatos.
-      // Aquí se utiliza reportFile, confidence y result del modelo temporal.
-      await _apiService.saveReportMetadata(
-        userId: userId,
-        filename: _predictionResult!.reportFile,
-        confidence: _predictionResult!.confidence,
-        result: _predictionResult!.result,
-      );
-      
-      _saveMessage = '¡Reporte guardado exitosamente en tu historial!';
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _saveMessage = 'Fallo al guardar el reporte: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    // En esta versión no hacemos otra llamada HTTP porque /predict ya
+    // insertó el reporte en la tabla "reports" de Supabase.
+    _saveMessage = '¡Reporte guardado exitosamente en tu historial!';
+    _isLoading = false;
+    notifyListeners();
+    return true;
   }
 
   // ------------------------------------------------------------------
   // 3. Descarga de Reporte
   // ------------------------------------------------------------------
   Future<void> downloadReport(String filename) async {
-    // La implementación de la descarga debe manejar el guardado del archivo
-    // en la plataforma específica (Web, Móvil, Escritorio).
     try {
-      await _apiService.downloadReport(filename);
-      // Aquí manejarías guardar el bodyBytes como archivo PDF en la plataforma específica.
+      final url = Uri.parse('${_apiService.baseUrl}/download/$filename');
 
-      debugPrint("Reporte descargado exitosamente (cuerpo de bytes recibido).");
-      // Añadir lógica de notificación al usuario (ej: un Snackbar)
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+        if (kDebugMode) {
+          debugPrint('Reporte abierto en el navegador: $url');
+        }
+      } else {
+        debugPrint('No se pudo lanzar la URL de descarga: $url');
+      }
     } catch (e) {
-      debugPrint("Error al descargar el reporte: $e");
+      debugPrint('Error al intentar descargar el reporte: $e');
     }
   }
 }

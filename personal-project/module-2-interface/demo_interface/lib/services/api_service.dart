@@ -11,10 +11,11 @@ class ApiService {
   // 1. Endpoint POST: /predict (CORREGIDO)
   // -----------------------------------------------------------------
   /// Obtiene la predicción de la API de FastAPI.
-  /// Envía user_id y las features numéricas al modelo.
+  /// Envía user_id, startup_name y las features numéricas al modelo.
   Future<PredictionResult> getPrediction(
     List<double> features,
     String userId,
+    String startupName,
   ) async {
     final url = Uri.parse('$baseUrl/predict');
     final headers = {'Content-Type': 'application/json'};
@@ -30,9 +31,10 @@ class ApiService {
       ];
     }
 
-    // Construir el body con user_id y las features
+    // Construir el body con user_id, startup_name y las features
     final body = jsonEncode({
       'user_id': userId,
+      'startup_name': startupName,
       'features': features,
     });
     

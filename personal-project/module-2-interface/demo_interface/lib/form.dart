@@ -124,11 +124,12 @@ class SecondPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Usamos MultiProvider para asegurarnos de que el StartupFormProvider se crea aquí
+    // Usamos MultiProvider para asegurarnos de que el StartupFormProvider se crea aquí.
+    // PredictionProvider se obtiene del MultiProvider global definido en main.dart,
+    // para no crear una instancia distinta que el diálogo no ve.
     return MultiProvider( 
       providers: [
         ChangeNotifierProvider(create: (_) => StartupFormProvider(userId: userId)),
-        ChangeNotifierProvider(create: (_) => PredictionProvider()),
       ],
       // Consumer2 para acceder al Provider del formulario y al de la predicción.
       child: Consumer2<StartupFormProvider, PredictionProvider>(
@@ -185,6 +186,14 @@ class SecondPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Startup Name
+                      providerForm.buildTextField(
+                        'Startup Name',
+                        providerForm.startupNameController,
+                        isNumber: false,
+                      ),
+                      const SizedBox(height: 8),
 
                       // Founded Year
                       providerForm.buildTextField(
@@ -370,11 +379,16 @@ class SecondPage extends StatelessWidget {
                                     final List<double> features =
                                         (jsonData['features'] as List<dynamic>)
                                             .cast<double>();
-                                    
-                                    final String userIdFromForm = providerForm.userId;
 
-                                    // 3. LLAMAR AL PROVEEDOR DE PREDICCIÓN (pasando features y userId)
-                                    providerPrediction.fetchPrediction(features, userIdFromForm);
+                                    final String userIdFromForm = providerForm.userId;
+                                    final String startupName = providerForm.startupNameController.text.trim();
+
+                                    // 3. LLAMAR AL PROVEEDOR DE PREDICCIÓN (pasando features, userId y nombre de startup)
+                                    providerPrediction.fetchPrediction(
+                                      features,
+                                      userIdFromForm,
+                                      startupName,
+                                    );
 
                                     // Mostrar Snackbar temporal para indicar que la solicitud fue enviada
                                     ScaffoldMessenger.of(context).showSnackBar(

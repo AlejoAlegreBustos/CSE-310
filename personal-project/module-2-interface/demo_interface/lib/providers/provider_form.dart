@@ -9,6 +9,9 @@ class StartupFormProvider extends ChangeNotifier {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   // Controllers principales
+  // Nombre de la startup
+  final TextEditingController startupNameController = TextEditingController();
+
   final TextEditingController foundedYearController = TextEditingController();
   final TextEditingController fundingAmountUsdController =
       TextEditingController();
@@ -225,6 +228,9 @@ class StartupFormProvider extends ChangeNotifier {
     // Añadimos userId al record
     record['user_id'] = userId;
 
+    // Nombre de la startup (para enlazar con la tabla start-up)
+    record['start_up_name'] = startupNameController.text.trim();
+
     record['founded_year'] = tryParseInt(foundedYearController.text);
     record['funding_amount_usd'] = tryParseDouble(
       fundingAmountUsdController.text,
@@ -367,6 +373,7 @@ class StartupFormProvider extends ChangeNotifier {
   }
 
   void resetForm() {
+    startupNameController.clear();
     foundedYearController.clear();
     fundingAmountUsdController.clear();
     employeeCountController.clear();
@@ -391,6 +398,7 @@ class StartupFormProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    startupNameController.dispose();
     foundedYearController.dispose();
     fundingAmountUsdController.dispose();
     employeeCountController.dispose();

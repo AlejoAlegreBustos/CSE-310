@@ -78,6 +78,7 @@ class PredictionInput(BaseModel):
     user_id: str 
     features: list[float]
     title: str = "New Startup Prediction" # Usado para el título en el reporte
+    startup_name: str | None = None  # Nombre/ID de la startup para la tabla reports
 
 # -----------------------------------------------------------
 # Funciones auxiliares (Sin cambios en esta sección)
@@ -239,8 +240,8 @@ def predict(input_data: PredictionInput):
             'model-used': 'XGBoost v1.0',
             'version': 1,
             'creation-date': datetime.now().strftime('%Y-%m-%d'),
-            # Si aún no usas la tabla "start-up", dejamos este campo vacío o None
-            'start-up-id': None,
+            # start_up_name referencia a la tabla "start-up" (columna "start-up-id")
+            'start_up_name': input_data.startup_name,
             'report_url': pdf_filename,
             'confidence': conf,
             'IPO_NO IPO': pred_label,
