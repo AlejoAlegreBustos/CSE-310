@@ -85,41 +85,74 @@ class PredictionInput(BaseModel):
 # -----------------------------------------------------------
 
 def exponential_projection(current_value: float, growth_rate: float, years: int = 1):
+    """Simple deterministic projection (not used directly in the PDF)."""
     return current_value * np.exp(growth_rate * years)
 
-def estimate_growth_rate(funding_amount: float):
-    if funding_amount > 100_000_000:
-        return 0.18
-    elif funding_amount > 10_000_000:
-        return 0.12
-    else:
-        return 0.06
+def estimate_growth_rate(funding_amount: float, revenue: float, employees: int) -> float:
+    """Heuristic estimate of annual growth rate.
 
-def simulate_and_plot(current_value: float, growth_rate: float, n_sim: int = 1000, sigma: float = 0.2):
+    - Base rate depends on funding round size (funding_amount).
+    - Adjusted by current revenue level and team size.
     """
-    Simula futuros valores y genera un gráfico en memoria (BytesIO) para el PDF.
+    # Base component by round size
+    if funding_amount > 100_000_000:
+        base = 0.18
+    elif funding_amount > 10_000_000:
+        base = 0.12
+    else:
+        base = 0.06
+
+    # Size adjustment by current revenue (large companies tend to grow slower in % terms)
+    if revenue > 100_000_000:
+        size_factor = 0.8
+    elif revenue > 10_000_000:
+        size_factor = 0.9
+    else:
+        size_factor = 1.0
+
+    # Light adjustment by team size (very small teams can scale faster)
+    if employees < 50:
+        team_factor = 1.1
+    elif employees < 200:
+        team_factor = 1.0
+    else:
+        team_factor = 0.9
+
+    return base * size_factor * team_factor
+
+def simulate_and_plot(current_value: float, growth_rate: float, years: int = 1, n_sim: int = 1000, sigma: float = 0.2):
+    """Simulate future values and generate a histogram image in memory (BytesIO).
+
+    Uses a simple lognormal model and scales growth by the number of years.
     """
-    simulated = np.random.lognormal(mean=np.log(current_value) + growth_rate, sigma=sigma, size=n_sim)
+    if current_value <= 0:
+        current_value = 1.0  # avoid log(0)
+
+    simulated = np.random.lognormal(
+        mean=np.log(current_value) + growth_rate * years,
+        sigma=sigma,
+        size=n_sim,
+    )
     mean_val = np.mean(simulated)
     p5 = np.percentile(simulated, 5)
     p95 = np.percentile(simulated, 95)
-    
+
     fig, ax = plt.subplots(figsize=(4, 2.5))
     ax.hist(simulated, bins=30, color='lightblue', edgecolor='black')
     ax.axvline(mean_val, color='red', linestyle='--', label='Mean')
     ax.axvline(p5, color='green', linestyle='--', label='5th percentile')
     ax.axvline(p95, color='orange', linestyle='--', label='95th percentile')
-    ax.set_title("Projected distribution")
+    ax.set_title(f"Projected distribution ({years} year(s))")
     ax.set_xlabel("USD")
     ax.set_ylabel("Frequency")
     ax.legend(fontsize=6)
-    
+
     img_buffer = BytesIO()
     plt.tight_layout()
     plt.savefig(img_buffer, format='PNG')
     plt.close(fig)
     img_buffer.seek(0)
-    
+
     return mean_val, p5, p95, img_buffer
 
 def create_pdf_report(
@@ -143,18 +176,42 @@ def create_pdf_report(
     styles = getSampleStyleSheet()
     story = []
 
-    # Growth rate
-    growth_rate = estimate_growth_rate(funding_amount)
+    # Growth rate (now adjusted by funding amount, current revenue and team size)
+    growth_rate = estimate_growth_rate(funding_amount, revenue, employees)
 
-    # Simulación + gráficos
-    revenue_mean, revenue_p5, revenue_p95, revenue_img = simulate_and_plot(revenue, growth_rate)
-    valuation_mean, valuation_p5, valuation_p95, valuation_img = simulate_and_plot(valuation, growth_rate)
+    # 1-year simulation (different volatility for revenue and valuation)
+    revenue_mean_1, revenue_p5_1, revenue_p95_1, revenue_img = simulate_and_plot(
+        revenue,
+        growth_rate,
+        years=1,
+        sigma=0.15,
+    )
+    valuation_mean_1, valuation_p5_1, valuation_p95_1, valuation_img = simulate_and_plot(
+        valuation,
+        growth_rate,
+        years=1,
+        sigma=0.25,
+    )
 
-    # Título
+    # 3-year simulation (numbers only, no additional charts)
+    revenue_mean_3, revenue_p5_3, revenue_p95_3, _ = simulate_and_plot(
+        revenue,
+        growth_rate,
+        years=3,
+        sigma=0.18,
+    )
+    valuation_mean_3, valuation_p5_3, valuation_p95_3, _ = simulate_and_plot(
+        valuation,
+        growth_rate,
+        years=3,
+        sigma=0.3,
+    )
+
+    # Title
     story.append(Paragraph("Startup Prediction Report", styles["Title"]))
     story.append(Spacer(1, 0.2 * inch))
 
-    # Información principal
+    # Main information
     if prediction == 1:
         prediction_text='IPO - High liquidity and visibility'
     else:
@@ -166,26 +223,33 @@ def create_pdf_report(
     <b>Founded year:</b> {founded_year}<br/>
     <b>Funding amount USD:</b> {funding_amount:,.2f}<br/>
     <b>Employees:</b> {employees}<br/>
-    <b>Current revenue:</b> {revenue:,.2f}<br/>
+    <b>Current annual revenue:</b> {revenue:,.2f}<br/>
     <b>Current valuation:</b> {valuation:,.2f}<br/><br/>
     <b>Estimated annual growth rate:</b> {growth_rate*100:.1f}%<br/><br/>
-    <b>Projected revenue (1 year):</b> {revenue_mean:,.2f} USD 
-    (5%-95%: {revenue_p5:,.2f} - {revenue_p95:,.2f})<br/>
-    <b>Projected valuation (1 year):</b> {valuation_mean:,.2f} USD 
-    (5%-95%: {valuation_p5:,.2f} - {valuation_p95:,.2f})<br/>
+    <b>Projected revenue in 1 year:</b> {revenue_mean_1:,.2f} USD 
+    (5%-95%: {revenue_p5_1:,.2f} - {revenue_p95_1:,.2f})<br/>
+    <b>Projected valuation in 1 year:</b> {valuation_mean_1:,.2f} USD 
+    (5%-95%: {valuation_p5_1:,.2f} - {valuation_p95_1:,.2f})<br/><br/>
+    <b>Projected revenue in 3 years:</b> {revenue_mean_3:,.2f} USD 
+    (5%-95%: {revenue_p5_3:,.2f} - {revenue_p95_3:,.2f})<br/>
+    <b>Projected valuation in 3 years:</b> {valuation_mean_3:,.2f} USD 
+    (5%-95%: {valuation_p5_3:,.2f} - {valuation_p95_3:,.2f})<br/><br/>
+    These projections are illustrative scenarios based on the current revenue,
+    valuation and funding amount, assuming a lognormal distribution of outcomes.
+    Actual future performance may be higher or lower than these estimates.<br/>
     """
     story.append(Paragraph(info, styles["BodyText"]))
     story.append(Spacer(1, 0.2*inch))
 
-    # Insertar gráficos
-    story.append(Paragraph("<b>Revenue distribution:</b>", styles["BodyText"]))
+    # Insert charts
+    story.append(Paragraph("<b>Revenue distribution (1 year):</b>", styles["BodyText"]))
     story.append(Image(revenue_img, width=400, height=250))
     story.append(Spacer(1, 0.2*inch))
 
-    story.append(Paragraph("<b>Valuation distribution:</b>", styles["BodyText"]))
+    story.append(Paragraph("<b>Valuation distribution (1 year):</b>", styles["BodyText"]))
     story.append(Image(valuation_img, width=400, height=250))
 
-    # Crear PDF
+    # Create PDF
     doc = SimpleDocTemplate(filepath, pagesize=letter)
     doc.build(story)
 

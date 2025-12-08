@@ -211,7 +211,7 @@ class SecondPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // Funding Amount
+                      // Funding Amount (planned investment in this round)
                       providerForm.buildTextField(
                         'Funding Amount USD',
                         providerForm.fundingAmountUsdController,
@@ -320,15 +320,15 @@ class SecondPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // Revenue & Valuation
+                      // Revenue & Valuation (current, before this round
                       providerForm.buildTextField(
-                        'Estimated Revenue USD',
+                        'Current Annual Revenue USD',
                         providerForm.estimatedRevenueUsdController,
                         isNumber: true,
                       ),
                       const SizedBox(height: 8),
                       providerForm.buildTextField(
-                        'Estimated Valuation USD',
+                        'Current Valuation USD',
                         providerForm.estimatedValuationUsdController,
                         isNumber: true,
                       ),
