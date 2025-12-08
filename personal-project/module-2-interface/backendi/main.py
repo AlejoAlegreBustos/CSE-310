@@ -240,8 +240,10 @@ def predict(input_data: PredictionInput):
             'model-used': 'XGBoost v1.0',
             'version': 1,
             'creation-date': datetime.now().strftime('%Y-%m-%d'),
-            # start_up_name referencia a la tabla "start-up" (columna "start-up-id")
-            'start_up_name': input_data.startup_name,
+            # IMPORTANTE: start_up_name referencia a la tabla "start-up" (columna "start-up-id").
+            # Por ahora NO enviamos este campo para evitar violar la FK cuando
+            # el id de startup aún no existe en esa tabla.
+            # 'start_up_name': input_data.startup_name,
             'report_url': pdf_filename,
             'confidence': conf,
             'IPO_NO IPO': pred_label,
@@ -259,11 +261,9 @@ def predict(input_data: PredictionInput):
 
     except Exception as e:
         print(f"SUPABASE INSERTION ERROR: {e}")
-        # Retornar un error 500 para indicar que el guardado falló
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction successful, but failed to save report to database: {e}"
-        )
+        # No rompemos la respuesta hacia Flutter; simplemente indicamos que
+        # no se pudo guardar el reporte en la tabla.
+        report_id = None
 
     # --- 3. Retornar la respuesta clave a Flutter ---
     return {
