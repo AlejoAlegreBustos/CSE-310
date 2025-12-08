@@ -20,15 +20,12 @@ class ApiService {
     final url = Uri.parse('$baseUrl/predict');
     final headers = {'Content-Type': 'application/json'};
 
-    // Ajuste defensivo: adaptamos el tamaño de features al esperado por el modelo.
-    const expectedFeatures = 289;
-    if (features.length > expectedFeatures) {
-      features = features.sublist(0, expectedFeatures);
-    } else if (features.length < expectedFeatures) {
-      features = [
-        ...features,
-        ...List<double>.filled(expectedFeatures - features.length, 0.0),
-      ];
+    // El modelo XGBoost actual (investment-pred.json) espera exactamente 29 features.
+    const expectedFeatures = 29;
+    if (features.length != expectedFeatures) {
+      throw Exception(
+        'Feature length mismatch. Expected $expectedFeatures, got ${features.length}',
+      );
     }
 
     // Construir el body con user_id, startup_name y las features

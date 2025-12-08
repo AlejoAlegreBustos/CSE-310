@@ -244,10 +244,8 @@ class StartupFormProvider extends ChangeNotifier {
     );
     record['co_investors_count'] = tryParseInt(coInvestorsCountController.text);
 
-    // La columna del modelo es 'exit_type_No Exit'. Si Exited=true, significa que NO hay 'No Exit'.
-    // Esto podría necesitar una revisión si el modelo espera un booleano, 
-    // pero basado en tu código anterior, usamos 0 y 1.
-    record['exit_type_No Exit'] = exited ? 0 : 1; 
+    // El nuevo modelo usa la columna 'exited_True' (1 = la startup YA salió, 0 = no ha salido).
+    record['exited_True'] = exited ? 1 : 0;
 
     if (fundingDate != null) {
       final d = fundingDate!;
@@ -306,52 +304,82 @@ class StartupFormProvider extends ChangeNotifier {
   }
 
   // --- JSON listo para API ---
-  // Función CORREGIDA para asegurar que la lista 'features' solo contenga doubles.
+  // Construye el vector de features EXACTAMENTE en el orden que espera investment-pred.json.
+  // feature_names del modelo:
+  // [
+  //   founded_year,
+  //   funding_amount_usd,
+  //   employee_count,
+  //   estimated_revenue_usd,
+  //   estimated_valuation_usd,
+  //   funding_date_day,
+  //   funding_date_month,
+  //   funding_date_year,
+  //   funding_date_weekday,
+  //   funding_date_quarter,
+  //   co_investors_count,
+  //   region_Europe,
+  //   region_Latin America,
+  //   region_MENA,
+  //   region_North America,
+  //   region_Oceania,
+  //   industry_Blockchain,
+  //   industry_E-commerce,
+  //   industry_Fintech,
+  //   industry_Healthcare,
+  //   industry_Logistics,
+  //   industry_SaaS,
+  //   funding_round_Pre-Seed,
+  //   funding_round_Seed,
+  //   funding_round_Series A,
+  //   funding_round_Series B,
+  //   funding_round_Series C,
+  //   funding_round_Series D,
+  //   exited_True,
+  // ]
   Map<String, dynamic> buildJsonForApi() {
     final record = buildRecord();
-    final List<double> features = []; // La lista de features debe ser List<double>
 
-    // 1. Features Numéricas principales (convertidas a double)
-    features.add((record['founded_year'] ?? 0).toDouble());
-    features.add(record['funding_amount_usd'] ?? 0.0);
-    features.add((record['employee_count'] ?? 0).toDouble());
-    features.add(record['estimated_revenue_usd'] ?? 0.0);
-    features.add(record['estimated_valuation_usd'] ?? 0.0);
-    
-    // 2. Features de fecha (convertidas a double)
-    features.add((record['funding_date_day'] ?? 0).toDouble());
-    features.add((record['funding_date_month'] ?? 0).toDouble());
-    features.add((record['funding_date_year'] ?? 0).toDouble());
-    features.add((record['funding_date_weekday'] ?? 0).toDouble());
-    features.add((record['funding_date_quarter'] ?? 0).toDouble());
+    double _d(dynamic value) => (value ?? 0).toDouble();
 
-    // 3. Feature 'exit_type_No Exit' (convertida a double)
-    features.add((record['exit_type_No Exit'] ?? 0).toDouble()); 
-
-    // 4. Keys de One-Hot Encoding/Tags (asegurando que sean doubles)
-    final oneHotKeys = record.keys.where(
-      (k) =>
-          k.startsWith('country_') ||
-          k.startsWith('region_') ||
-          k.startsWith('industry_') ||
-          k.startsWith('funding_round_') ||
-          k.startsWith('lead_investor_') ||
-          k.startsWith('tag_'),
-    );
-
-    final sortedKeys = oneHotKeys.toList()..sort();
-    for (final k in sortedKeys) {
-      final val = record[k];
-      
-      // Todos los valores One-Hot y Tags son 0 o 1 (int), los convertimos a 0.0 o 1.0 (double)
-      if (val is int) {
-        features.add(val.toDouble()); 
-      } else if (val is double) {
-        features.add(val);
-      } else {
-        features.add(0.0); // Valor por defecto seguro
-      }
-    }
+    final List<double> features = [
+      // 1-5: numéricos principales
+      _d(record['founded_year']),
+      (record['funding_amount_usd'] ?? 0.0) as double,
+      _d(record['employee_count']),
+      (record['estimated_revenue_usd'] ?? 0.0) as double,
+      (record['estimated_valuation_usd'] ?? 0.0) as double,
+      // 6-10: fecha
+      _d(record['funding_date_day']),
+      _d(record['funding_date_month']),
+      _d(record['funding_date_year']),
+      _d(record['funding_date_weekday']),
+      _d(record['funding_date_quarter']),
+      // 11: co_investors_count
+      _d(record['co_investors_count']),
+      // 12-16: regiones (one-hot)
+      _d(record['region_Europe']),
+      _d(record['region_Latin America']),
+      _d(record['region_MENA']),
+      _d(record['region_North America']),
+      _d(record['region_Oceania']),
+      // 17-22: industrias (one-hot)
+      _d(record['industry_Blockchain']),
+      _d(record['industry_E-commerce']),
+      _d(record['industry_Fintech']),
+      _d(record['industry_Healthcare']),
+      _d(record['industry_Logistics']),
+      _d(record['industry_SaaS']),
+      // 23-28: funding_round (one-hot)
+      _d(record['funding_round_Pre-Seed']),
+      _d(record['funding_round_Seed']),
+      _d(record['funding_round_Series A']),
+      _d(record['funding_round_Series B']),
+      _d(record['funding_round_Series C']),
+      _d(record['funding_round_Series D']),
+      // 29: exited_True
+      _d(record['exited_True']),
+    ];
 
     // La API de FastAPI espera 'user_id' (para logging/BD) y 'features' para el modelo.
     return {
