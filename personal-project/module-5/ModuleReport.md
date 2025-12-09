@@ -1,11 +1,11 @@
-# Module #<!-- Insert Module Number --> Report | CSE 310 – Applied Programming
+# Module #5 Report | CSE 310 – Applied Programming
 
-|Name|Date|Teacher|
-|-|-|-|
-| | | Bro McGary |
+|Alejo Alegre Bustos|12/09/2025|Bro McGary|
+
+
 
 ### Project Repository Link
-Copy the link to your [Github Repository](<!-- Insert Link Here -->)
+[Github Repository](https://github.com/AlejoAlegreBustos/CSE-310/tree/main/personal-project/module-2-interface)
 
 ### Module
 Mark an **X** next to the module you completed
@@ -13,26 +13,26 @@ Mark an **X** next to the module you completed
 |Module                   | |Language                  | |
 |-------------------------|-|--------------------------|-|
 |Cloud Databases          | | Java                     | |
-|Data Analysis            | | Kotlin                   | |
+|Data Analysis            |x| Kotlin                   | |
 |Game Framework           | | R                        | |
 |GIS Mapping              | | Erlang                   | |
 |Mobile App               | | JavaScript               | |
-|Networking               | | C#                       | |
-|Web Apps                 | | TypeScript               | |
-|Language – C++           | | Rust                     | |
-|SQL Relational Databases | |Choose Your Own Adventure | |
+|Networking               |x| C#                       | |
+|Web Apps                 |x| TypeScript               | |
+|Language – C++           | | python                   |x|
+|SQL Relational Databases |x| Dart                     |x|
 
 ### Fill Out the Checklist
 Complete the following checklist to make sure you completed all parts of the module.  Mark your response with **Yes** or **No**.  If the answer is **No** then additionally describe what was preventing you from completing this step.
 
 |Question                                                                                         |Your Response|Comments|
 |--------------------------------------------------------------------------------------------------------------------|-|-|
-|Did you implement the entire set of unique requirements as described in the Module Description document in I-Learn? | | |
-|Did you write at least 100 lines of code in your software and include useful comments?                              | | |
-|Did you use the correct README.md template from the Module Description document in I-Learn?                         | | |
-|Did you completely populate the README.md template?                                                                 | | |
-|Did you create the video, publish it on YouTube, and reference it in the README.md file?                            | | |
-|Did you publish the code with the README.md (in the top-level folder) into a public GitHub repository?              | | |
+|Did you implement the entire set of unique requirements as described in the Module Description document in I-Learn? |y| |
+|Did you write at least 100 lines of code in your software and include useful comments?                              |y| |
+|Did you use the correct README.md template from the Module Description document in I-Learn?                         |y| |
+|Did you completely populate the README.md template?                                                                 |y| |
+|Did you create the video, publish it on YouTube, and reference it in the README.md file?                            |y| |
+|Did you publish the code with the README.md (in the top-level folder) into a public GitHub repository?              |y| |
  
 
 ### Did you complete a Stretch Challenge 
@@ -45,16 +45,16 @@ How many hours did you spend on this module and the team project this Sprint?
 
 |              |Hours|
 |------------------|-|
-|Individual Module | |
-|Team Project      | |
+|Individual Module |10|
+|Team Project      | 6|
 
 ### Retrospective
 - What learning strategies worked well in this module?
-  <!-- Response Here -->
+ sometimes is better to draft the work flow project on paper or somewhere else before to start coding it
 - What strategies (or lack of strategy) did not work well?
-  <!-- Response Here -->
+  I should write down the work flow of the project with all its components before to coding it
 - How can you improve in the next module?
-  <!-- Response Here -->
+  In next project I will write the work flow project witn the MPV
 
 
-<!-- Create this Markdown to a PDF and submit it. In visual studio code you can convert this to a pdf with any one of the extensions. -->
+[video](https://youtu.be/JADD_6WNlGo)

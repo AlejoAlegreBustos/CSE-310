@@ -72,7 +72,7 @@ class PredictionProvider with ChangeNotifier {
   // ------------------------------------------------------------------
   Future<bool> saveReport(String userId) async {
     if (_predictionResult == null) {
-      _saveMessage = 'No hay resultado de predicción para guardar.';
+      _saveMessage = 'No predictions to save.';
       notifyListeners();
       return false;
     }
@@ -83,7 +83,7 @@ class PredictionProvider with ChangeNotifier {
 
     // En esta versión no hacemos otra llamada HTTP porque /predict ya
     // insertó el reporte en la tabla "reports" de Supabase.
-    _saveMessage = '¡Reporte guardado exitosamente en tu historial!';
+    _saveMessage = '¡Report save on my reports page!';
     _isLoading = false;
     notifyListeners();
     return true;
@@ -102,13 +102,13 @@ class PredictionProvider with ChangeNotifier {
           mode: LaunchMode.externalApplication,
         );
         if (kDebugMode) {
-          debugPrint('Reporte abierto en el navegador: $url');
+          debugPrint('Report opened on browser: $url');
         }
       } else {
-        debugPrint('No se pudo lanzar la URL de descarga: $url');
+        debugPrint('Download failed: $url');
       }
     } catch (e) {
-      debugPrint('Error al intentar descargar el reporte: $e');
+      debugPrint('Error trying to download report: $e');
     }
   }
 }

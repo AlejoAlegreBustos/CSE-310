@@ -39,18 +39,18 @@ class SecondPage extends StatelessWidget {
             }
 
             // Deshabilitar el botón si ya se guardó o está cargando
-            final bool isSaved = predProvider.saveMessage?.contains('exitosa') == true;
+            final bool isSaved = predProvider.saveMessage?.contains('succesfully') == true;
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-              title: Text('Resultado de la Predicción', 
+              title: Text('Prediction results', 
                 style: TextStyle(color: result.prediction == 1 ? Colors.green : Colors.red),
               ),
               content: SingleChildScrollView(
                 child: ListBody(
                   children: <Widget>[
                     Text(
-                      'Decisión de IPO:', 
+                      'Classification:', 
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
@@ -62,9 +62,9 @@ class SecondPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 15),
-                    Text('Confianza del modelo: ${(result.confidence * 100).toStringAsFixed(2)}%'),
+                    Text('Model confidence: ${(result.confidence * 100).toStringAsFixed(2)}%'),
                     const SizedBox(height: 15),
-                    Text('¡Puedes descargar el reporte detallado o guardar este resultado en tu historial!'),
+                    Text('¡You can download the detailed report or save this result to your history!'),
                     
                     // Muestra el mensaje de guardado/error dentro del modal
                     if (predProvider.saveMessage != null)
@@ -85,13 +85,13 @@ class SecondPage extends StatelessWidget {
                 // Botón 1: Descargar PDF
                 TextButton.icon(
                   icon: const Icon(Icons.download),
-                  label: const Text('Descargar PDF'),
+                  label: const Text('Download PDF'),
                   onPressed: predProvider.isLoading ? null : () {
                     // Lógica de descarga (el provider solo hace la llamada, la UI maneja el guardado en disco)
                     predProvider.downloadReport(result.reportFile);
                     Navigator.of(dialogContext).pop(); // Cerrar el diálogo
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Comenzando descarga del reporte...')),
+                      const SnackBar(content: Text('Downloading pdf...')),
                     );
                   },
                 ),
@@ -101,7 +101,7 @@ class SecondPage extends StatelessWidget {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.save),
                   label: Text(
-                    predProvider.isLoading ? 'Guardando...' : 'Guardar Reporte',
+                    predProvider.isLoading ? 'Saving...' : 'Save report',
                   ),
                   onPressed: predProvider.isLoading || isSaved
                       ? null // Deshabilitar si está cargando o si ya se guardó con éxito
@@ -393,7 +393,7 @@ class SecondPage extends StatelessWidget {
                                     // Mostrar Snackbar temporal para indicar que la solicitud fue enviada
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Predicción solicitada. Esperando respuesta...'),
+                                        content: Text('Prediccion requested. Waiting for server answer...'),
                                         duration: Duration(seconds: 2),
                                       ),
                                     );
