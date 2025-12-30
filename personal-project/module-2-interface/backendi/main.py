@@ -61,11 +61,14 @@ except Exception as e:
     print(f"Error initializing Supabase client: {e}")
     # Esto puede hacer que la app falle si las credenciales son incorrectas
 
-# Cargar modelo
-model = xgb.XGBClassifier()
+import xgboost as xgb
+import os
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, "investment-pred.json")
+model = xgb.Booster()
 model.load_model(model_path)
+
 
 EXPECTED_FEATURES = 29
 
