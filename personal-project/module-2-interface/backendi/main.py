@@ -5,12 +5,13 @@ import xgboost as xgb
 import numpy as np
 import os
 import uuid
-import time # Para generar nombres de archivo basados en timestamp
+import time  # To generate filenames based on timestamps
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
-# --- LIBRERÍAS DE CONEXIÓN ---
-from supabase import create_client, Client # Necesitas 'pip install supabase'
-# ------------------------------
+
+# --- CONNECTION LIBRARIES ---
+from supabase import create_client, Client # Requires 'pip install supabase'
+
 
 # ReportLab (PDF)
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
@@ -18,85 +19,76 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 
-# Matplotlib para gráficos
+# Matplotlib for charts
 import matplotlib.pyplot as plt
 from io import BytesIO
 
-# -----------------------------------------------------------
-# CONFIGURACIÓN INICIAL Y CLIENTE SUPABASE
-# -----------------------------------------------------------
+# INITIAL CONFIGURATION AND SUPABASE CLIENT
+
 app = FastAPI()
 REPORTS_DIR = "reports"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-# *** IMPORTANTE: REEMPLAZA ESTAS CLAVES CON TUS CREDENCIALES REALES ***
+# *** IMPORTANT: REPLACE THESE KEYS WITH YOUR REAL CREDENTIALS ***
 SUPABASE_URL = "https://vhhusfbogsjknjsahfyy.supabase.co" 
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaHVzZmJvZ3Nqa25qc2FoZnl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjIwMDU0NiwiZXhwIjoyMDc3Nzc2NTQ2fQ.9my-umoYH7-FW86nTzjYHggjQ9HuEWuGZxu5nJxf3vk" 
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." # Recommended: Use env variables
 
-# -----------------------------------------------------------
-# 2. CONFIGURACIÓN DEL MIDDLEWARE DE CORS
-# -----------------------------------------------------------
-# La lista de orígenes DEBE incluir tu URL de Render (producción) y tus puertos de desarrollo (local)
+# 2. CORS MIDDLEWARE CONFIGURATION
+
+# The origin list MUST include your Render URL (production) and dev ports (local)
 origins = [
-    # Producción (Tu URL de Render, si aplica)
     "https://invest-app-72ob.onrender.com",
-    # Desarrollo Local (Flutter Web/Edge)
-    "http://localhost:62898",  # Asegúrate de usar el puerto correcto (62898 es el que aparece en tu log)
-    "http://127.0.0.1:62898", # Espejo del anterior
-    "http://localhost:5000", # Puertos comunes si usas un proxy o frontend diferente
+    "http://localhost:62898",
+    "http://127.0.0.1:62898",
+    "http://localhost:5000",
     "http://127.0.0.1:5000",
-    "*", # Permite CUALQUIER origen (Solo para desarrollo rápido, usar el puerto específico es mejor)
+    "*", # Allow any origin (Fine for rapid dev, specific ports are better)
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,     # Lista de orígenes permitidos
-    allow_credentials=True,    # Permitir cookies y encabezados de autorización
-    allow_methods=["*"],       # Permitir todos los métodos (POST, GET, OPTIONS, etc.)
-    allow_headers=["*"],       # Permitir todos los encabezados
+    allow_origins=origins,     # Allowed origins list
+    allow_credentials=True,    # Allow cookies and auth headers
+    allow_methods=["*"],       # Allow all methods (POST, GET, OPTIONS, etc.)
+    allow_headers=["*"],       # Allow all headers
 )
+
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
     print(f"Error initializing Supabase client: {e}")
-    # Esto puede hacer que la app falle si las credenciales son incorrectas
 
-import xgboost as xgb
-import os
+
+# MODEL LOADING
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, "investment-pred.json")
 model = xgb.Booster()
 model.load_model(model_path)
 
-
 EXPECTED_FEATURES = 29
 
-# -----------------------------------------------------------
-# Esquemas
-# -----------------------------------------------------------
+ 
+# Schemas
+ 
 
 class PredictionInput(BaseModel):
-    # ¡NUEVO CAMPO! Requerido por Flutter y para el registro de Supabase
+    # Required by Flutter and for Supabase logging
     user_id: str 
     features: list[float]
-    title: str = "New Startup Prediction" # Usado para el título en el reporte
-    startup_name: str | None = None  # Nombre/ID de la startup para la tabla reports
+    title: str = "New Startup Prediction" # Used for the report title
+    startup_name: str | None = None  # Startup Name/ID for the reports table
 
-# -----------------------------------------------------------
-# Funciones auxiliares (Sin cambios en esta sección)
-# -----------------------------------------------------------
+ 
+# Helper Functions
+ 
 
 def exponential_projection(current_value: float, growth_rate: float, years: int = 1):
     """Simple deterministic projection (not used directly in the PDF)."""
     return current_value * np.exp(growth_rate * years)
 
 def estimate_growth_rate(funding_amount: float, revenue: float, employees: int) -> float:
-    """Heuristic estimate of annual growth rate.
-
-    - Base rate depends on funding round size (funding_amount).
-    - Adjusted by current revenue level and team size.
-    """
+    """Heuristic estimate of annual growth rate."""
     # Base component by round size
     if funding_amount > 100_000_000:
         base = 0.18
@@ -105,7 +97,7 @@ def estimate_growth_rate(funding_amount: float, revenue: float, employees: int) 
     else:
         base = 0.06
 
-    # Size adjustment by current revenue (large companies tend to grow slower in % terms)
+    # Size adjustment by current revenue
     if revenue > 100_000_000:
         size_factor = 0.8
     elif revenue > 10_000_000:
@@ -113,7 +105,7 @@ def estimate_growth_rate(funding_amount: float, revenue: float, employees: int) 
     else:
         size_factor = 1.0
 
-    # Light adjustment by team size (very small teams can scale faster)
+    # Light adjustment by team size
     if employees < 50:
         team_factor = 1.1
     elif employees < 200:
@@ -124,10 +116,7 @@ def estimate_growth_rate(funding_amount: float, revenue: float, employees: int) 
     return base * size_factor * team_factor
 
 def simulate_and_plot(current_value: float, growth_rate: float, years: int = 1, n_sim: int = 1000, sigma: float = 0.2):
-    """Simulate future values and generate a histogram image in memory (BytesIO).
-
-    Uses a simple lognormal model and scales growth by the number of years.
-    """
+    """Simulate future values and generate a histogram image in memory (BytesIO)."""
     if current_value <= 0:
         current_value = 1.0  # avoid log(0)
 
@@ -167,58 +156,39 @@ def create_pdf_report(
     founded_year: int,
     employees: int
 ) -> str:
-    """Genera un PDF con la predicción del modelo, revenue y valuación con gráficos."""
+    """Generates a PDF with model prediction, revenue, and valuation charts."""
     
-    # El nombre del archivo ahora se genera en /predict (con user_id y timestamp)
-    # y solo se utiliza aquí el timestamp para el nombre temporal
+    # Filename is now generated in /predict (with user_id and timestamp)
+    # only using timestamp here for the temporary name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"temp_report_{timestamp}.pdf"
     filepath = os.path.join(REPORTS_DIR, filename)
 
-    # ... (código de ReportLab para generar el PDF) ...
     styles = getSampleStyleSheet()
     story = []
 
-    # Growth rate (now adjusted by funding amount, current revenue and team size)
     growth_rate = estimate_growth_rate(funding_amount, revenue, employees)
 
-    # 1-year simulation (different volatility for revenue and valuation)
+    # 1-year simulation
     revenue_mean_1, revenue_p5_1, revenue_p95_1, revenue_img = simulate_and_plot(
-        revenue,
-        growth_rate,
-        years=1,
-        sigma=0.15,
+        revenue, growth_rate, years=1, sigma=0.15,
     )
     valuation_mean_1, valuation_p5_1, valuation_p95_1, valuation_img = simulate_and_plot(
-        valuation,
-        growth_rate,
-        years=1,
-        sigma=0.25,
+        valuation, growth_rate, years=1, sigma=0.25,
     )
 
-    # 3-year simulation (numbers only, no additional charts)
+    # 3-year simulation (data only)
     revenue_mean_3, revenue_p5_3, revenue_p95_3, _ = simulate_and_plot(
-        revenue,
-        growth_rate,
-        years=3,
-        sigma=0.18,
+        revenue, growth_rate, years=3, sigma=0.18,
     )
     valuation_mean_3, valuation_p5_3, valuation_p95_3, _ = simulate_and_plot(
-        valuation,
-        growth_rate,
-        years=3,
-        sigma=0.3,
+        valuation, growth_rate, years=3, sigma=0.3,
     )
 
-    # Title
     story.append(Paragraph("Startup Prediction Report", styles["Title"]))
     story.append(Spacer(1, 0.2 * inch))
 
-    # Main information
-    if prediction == 1:
-        prediction_text='IPO - High liquidity and visibility'
-    else:
-        prediction_text='Not IPO'
+    prediction_text = 'IPO - High liquidity and visibility' if prediction == 1 else 'Not IPO'
 
     info = f"""
     <b>XGBoost Prediction Exit-type:</b> {prediction_text}<br/>
@@ -229,22 +199,14 @@ def create_pdf_report(
     <b>Current annual revenue:</b> {revenue:,.2f}<br/>
     <b>Current valuation:</b> {valuation:,.2f}<br/><br/>
     <b>Estimated annual growth rate:</b> {growth_rate*100:.1f}%<br/><br/>
-    <b>Projected revenue in 1 year:</b> {revenue_mean_1:,.2f} USD 
-    (5%-95%: {revenue_p5_1:,.2f} - {revenue_p95_1:,.2f})<br/>
-    <b>Projected valuation in 1 year:</b> {valuation_mean_1:,.2f} USD 
-    (5%-95%: {valuation_p5_1:,.2f} - {valuation_p95_1:,.2f})<br/><br/>
-    <b>Projected revenue in 3 years:</b> {revenue_mean_3:,.2f} USD 
-    (5%-95%: {revenue_p5_3:,.2f} - {revenue_p95_3:,.2f})<br/>
-    <b>Projected valuation in 3 years:</b> {valuation_mean_3:,.2f} USD 
-    (5%-95%: {valuation_p5_3:,.2f} - {valuation_p95_3:,.2f})<br/><br/>
-    These projections are illustrative scenarios based on the current revenue,
-    valuation and funding amount, assuming a lognormal distribution of outcomes.
-    Actual future performance may be higher or lower than these estimates.<br/>
+    <b>Projected revenue in 1 year:</b> {revenue_mean_1:,.2f} USD<br/>
+    <b>Projected valuation in 1 year:</b> {valuation_mean_1:,.2f} USD<br/><br/>
+    <b>Projected revenue in 3 years:</b> {revenue_mean_3:,.2f} USD<br/>
+    <b>Projected valuation in 3 years:</b> {valuation_mean_3:,.2f} USD<br/><br/>
     """
     story.append(Paragraph(info, styles["BodyText"]))
     story.append(Spacer(1, 0.2*inch))
 
-    # Insert charts
     story.append(Paragraph("<b>Revenue distribution (1 year):</b>", styles["BodyText"]))
     story.append(Image(revenue_img, width=400, height=250))
     story.append(Spacer(1, 0.2*inch))
@@ -252,20 +214,18 @@ def create_pdf_report(
     story.append(Paragraph("<b>Valuation distribution (1 year):</b>", styles["BodyText"]))
     story.append(Image(valuation_img, width=400, height=250))
 
-    # Create PDF
     doc = SimpleDocTemplate(filepath, pagesize=letter)
     doc.build(story)
 
-    # Retorna el path temporal, que será renombrado en /predict
     return filepath
 
-# -----------------------------------------------------------
+ 
 # Endpoints
-# -----------------------------------------------------------
+ 
 
 @app.post("/predict")
 def predict(input_data: PredictionInput):
-    # --- 1. Predicción y Creación de PDF ---
+    # --- 1. Prediction and PDF Creation ---
     X = np.array([input_data.features])
 
     if X.shape[1] != EXPECTED_FEATURES:
@@ -274,80 +234,65 @@ def predict(input_data: PredictionInput):
             detail=f"Model expects {EXPECTED_FEATURES} features, received {X.shape[1]}"
         )
 
+    # FIX: Inject feature names from the model into the DMatrix to avoid ValueError
+    feature_names = model.feature_names
+    dtest = xgb.DMatrix(X, feature_names=feature_names)
 
-
-    # 1. Convertimos a DMatrix (necesario para el API nativo)
-    dtest = xgb.DMatrix(X)
-
-    # 2. Obtenemos la predicción
-    # En el API nativo, predict() suele devolver la probabilidad directamente 
-    # si es una clasificación binaria.
+    # Get prediction probability
     prediction = model.predict(dtest)
     prob_val = float(prediction[0]) 
 
-    # 3. Determinamos la clase (0 o 1) basándonos en un umbral (threshold) de 0.5
+    # Determine class (threshold 0.5)
     pred_int = 1 if prob_val > 0.5 else 0
 
-    # 4. Calculamos la confianza
-    # Si prob_val es 0.9, la confianza es 0.9. Si es 0.1, la confianza en 'NO IPO' es 0.9
+    # Calculate confidence level
     conf = prob_val if pred_int == 1 else (1.0 - prob_val)
-
     pred_label = 'IPO' if pred_int == 1 else 'NO IPO'
-    # Extracción de valores para el PDF
+
+    # Extract values for PDF generation
     founded_year = int(input_data.features[0])
     funding_amount = float(input_data.features[1])
     employees = int(input_data.features[2])
     revenue = float(input_data.features[3])
     valuation = float(input_data.features[4])
 
-    # Crea PDF (devuelve un path temporal)
+    # Create PDF (returns temp path)
     temp_pdf_path = create_pdf_report(pred_int, conf, revenue, valuation, funding_amount, founded_year, employees)
     
-    # Generar el nombre de archivo final y renombrar el PDF
+    # Generate final filename and rename the PDF
     timestamp_key = int(time.time())
     pdf_filename = f"report_{input_data.user_id}_{timestamp_key}.pdf"
     final_pdf_path = os.path.join(REPORTS_DIR, pdf_filename)
-    os.rename(temp_pdf_path, final_pdf_path) # Renombra el archivo temporal
+    os.rename(temp_pdf_path, final_pdf_path) 
 
-    # --- 2. Persistencia en Supabase ---
+    # 2. Supabase
 
     try:
-        report_uuid = str(uuid.uuid4())  # Generar ID único para la PK
+        report_uuid = str(uuid.uuid4()) # Unique ID for PK
 
         data_to_save = {
-            # Nombres EXACTOS de las columnas en la tabla 'reports'
+            # Exact column names from 'reports' table
             'reportid': report_uuid,
             'model-used': 'XGBoost v1.0',
             'version': 1,
             'creation-date': datetime.now().strftime('%Y-%m-%d'),
-            # IMPORTANTE: start_up_name referencia a la tabla "start-up" (columna "start-up-id").
-            # Por ahora NO enviamos este campo para evitar violar la FK cuando
-            # el id de startup aún no existe en esa tabla.
-            # 'start_up_name': input_data.startup_name,
             'report_url': pdf_filename,
             'confidence': conf,
             'IPO_NO IPO': pred_label,
-            # Enlazamos el reporte con el usuario de la tabla public.user
             'user_id': input_data.user_id,
         }
 
-        # En supabase-py 2.x, insert devuelve directamente la respuesta.
-        # No usamos .select() aquí.
         response = supabase.table('reports').insert(data_to_save).execute()
-
-        # response.data suele ser una lista con las filas insertadas
         saved_report = response.data[0] if response.data else data_to_save
         report_id = saved_report.get('reportid', report_uuid)
 
     except Exception as e:
         print(f"SUPABASE INSERTION ERROR: {e}")
-        # No rompemos la respuesta hacia Flutter; simplemente indicamos que
-        # no se pudo guardar el reporte en la tabla.
         report_id = None
 
-    # --- 3. Retornar la respuesta clave a Flutter ---
+    # 3. Return response to flutter 
     return {
-        "prediction": pred_int, # 1 o 0
+        "prediction": pred_int,
         "confidence": conf,
         "report_file": pdf_filename,
         "report_id": report_id
