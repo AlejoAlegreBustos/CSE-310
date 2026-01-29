@@ -274,12 +274,25 @@ def predict(input_data: PredictionInput):
             detail=f"Model expects {EXPECTED_FEATURES} features, received {X.shape[1]}"
         )
 
-    # Predicción XGBoost
-    pred_int = int(model.predict(X)[0])
-    prob = model.predict_proba(X)[0]
-    conf = float(np.max(prob))
+
+
+    # 1. Convertimos a DMatrix (necesario para el API nativo)
+    dtest = xgb.DMatrix(X)
+
+    # 2. Obtenemos la predicción
+    # En el API nativo, predict() suele devolver la probabilidad directamente 
+    # si es una clasificación binaria.
+    prediction = model.predict(dtest)
+    prob_val = float(prediction[0]) 
+
+    # 3. Determinamos la clase (0 o 1) basándonos en un umbral (threshold) de 0.5
+    pred_int = 1 if prob_val > 0.5 else 0
+
+    # 4. Calculamos la confianza
+    # Si prob_val es 0.9, la confianza es 0.9. Si es 0.1, la confianza en 'NO IPO' es 0.9
+    conf = prob_val if pred_int == 1 else (1.0 - prob_val)
+
     pred_label = 'IPO' if pred_int == 1 else 'NO IPO'
-    
     # Extracción de valores para el PDF
     founded_year = int(input_data.features[0])
     funding_amount = float(input_data.features[1])
@@ -297,7 +310,7 @@ def predict(input_data: PredictionInput):
     os.rename(temp_pdf_path, final_pdf_path) # Renombra el archivo temporal
 
     # --- 2. Persistencia en Supabase ---
-    # --- 2. Persistencia en Supabase ---
+
     try:
         report_uuid = str(uuid.uuid4())  # Generar ID único para la PK
 
